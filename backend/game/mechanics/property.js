@@ -121,9 +121,129 @@ async function payRent(payer, owner, amount) {
   };
 }
 
+/**
+ * Check if player can build houses/hotels on a property
+ */
+async function canBuildOnProperty(player, property) {
+  // Can only build on standard properties (not railroads/utilities)
+  if (property.property_type !== 'property') {
+    return { canBuild: false, reason: 'Cannot build on railroads or utilities' };
+  }
+
+  // Must own the property
+  if (property.owner_id !== player.id) {
+    return { canBuild: false, reason: 'You do not own this property' };
+  }
+
+  // Cannot build on mortgaged property
+  if (property.is_mortgaged) {
+    return { canBuild: false, reason: 'Cannot build on mortgaged property' };
+  }
+
+  // Must own all properties in color group (monopoly)
+  const allProperties = await getAllProperties();
+  const colorGroupProperties = allProperties.filter(
+    p => p.color_group === property.color_group && p.property_type === 'property'
+  );
+  const ownsAll = colorGroupProperties.every(p => p.owner_id === player.id);
+
+  if (!ownsAll) {
+    return { canBuild: false, reason: 'Must own all properties in color group' };
+  }
+
+  // Cannot build on any property in the group if any are mortgaged
+  const anyMortgaged = colorGroupProperties.some(p => p.is_mortgaged);
+  if (anyMortgaged) {
+    return { canBuild: false, reason: 'Cannot build while any property in group is mortgaged' };
+  }
+
+  // Check even building rule - can't have more than 1 house difference
+  const houseCounts = colorGroupProperties.map(p => p.house_count);
+  const minHouses = Math.min(...houseCounts);
+
+  if (property.house_count > minHouses) {
+    return { canBuild: false, reason: 'Must build evenly across color group' };
+  }
+
+  // Cannot build more than hotel (5)
+  if (property.house_count >= 5) {
+    return { canBuild: false, reason: 'Property already has a hotel' };
+  }
+
+  return { canBuild: true, colorGroupProperties };
+}
+
+/**
+ * Purchase houses or hotel for a property
+ */
+async function purchaseHouses(player, property, count) {
+  const buildCheck = await canBuildOnProperty(player, property);
+
+  if (!buildCheck.canBuild) {
+    throw new Error(buildCheck.reason);
+  }
+
+  // Validate count
+  if (count < 1 || count > 5) {
+    throw new Error('Can only buy 1-5 houses at a time');
+  }
+
+  const newHouseCount = property.house_count + count;
+  if (newHouseCount > 5) {
+    throw new Error(`Cannot build ${count} houses. Would exceed hotel limit.`);
+  }
+
+  // Check even building for each house
+  const { colorGroupProperties } = buildCheck;
+  const houseCounts = colorGroupProperties.map(p =>
+    p.id === property.id ? property.house_count : p.house_count
+  );
+
+  for (let i = 0; i < count; i++) {
+    const currentCount = property.house_count + i;
+    const minInGroup = Math.min(...houseCounts);
+
+    if (currentCount > minInGroup) {
+      throw new Error(`Must build evenly. Other properties in group have ${minInGroup} houses.`);
+    }
+
+    // Update the count for next iteration
+    houseCounts[colorGroupProperties.findIndex(p => p.id === property.id)] = currentCount + 1;
+  }
+
+  // Calculate cost
+  const costPerHouse = property.house_cost;
+  const totalCost = costPerHouse * count;
+
+  if (player.money < totalCost) {
+    throw new Error(`Insufficient funds. Need $${totalCost}, have $${player.money}`);
+  }
+
+  // Deduct money from player
+  await updatePlayer(player.id, {
+    money: player.money - totalCost
+  });
+
+  // Update property
+  await updateProperty(property.id, {
+    houseCount: newHouseCount
+  });
+
+  return {
+    success: true,
+    housesAdded: count,
+    newHouseCount,
+    cost: totalCost,
+    newMoney: player.money - totalCost,
+    isHotel: newHouseCount === 5
+  };
+}
+
 module.exports = {
   canBuyProperty,
   purchaseProperty,
   calculateRent,
-  payRent
+  payRent,
+  canBuildOnProperty,
+  purchaseHouses
 };

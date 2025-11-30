@@ -79,6 +79,37 @@ router.post('/buy-property', async (req, res) => {
   }
 });
 
+// POST /api/game/buy-houses - Buy houses/hotel for a property
+router.post('/buy-houses', async (req, res) => {
+  try {
+    const { propertyId, count } = req.body;
+
+    if (!propertyId || !count) {
+      return res.status(400).json({ message: 'Property ID and count required' });
+    }
+
+    if (count < 1 || count > 5) {
+      return res.status(400).json({ message: 'Count must be between 1 and 5' });
+    }
+
+    const result = await req.app.gameController.handleBuyHouses(
+      req.user.id,
+      propertyId,
+      count
+    );
+
+    // Broadcast to all clients
+    if (req.app.io) {
+      req.app.io.emit('game:houses_purchased', result);
+    }
+
+    res.json(result);
+  } catch (error) {
+    console.error('Buy houses error:', error);
+    res.status(400).json({ message: error.message });
+  }
+});
+
 // POST /api/game/end-turn - End current turn
 router.post('/end-turn', async (req, res) => {
   try {

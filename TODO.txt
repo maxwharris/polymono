@@ -1,20 +1,12 @@
-1. ✅ COMPLETED - Fixed all card actions (Advance to GO, Reading Railroad, Community Chest cards).
+1. When hovering a property in the Player Property List (Hover info), if the user is able to buy houses/hotels, give options to buy _ houses or a hotel. Calculate and display price before user presses 'Buy'
 
-2. ✅ COMPLETED - Movement logic verified and working correctly.
+2. Add trade Button to Actions. This can be pressed regardless of whos turn is it. This should open a 'Trade' modal. 
+On this screen users can send trade offers to other players. 
+There should be an 'Received offers' section and a 'send offer' section.
 
-3. ✅ COMPLETED - Jail is correctly set to 3 turns (turns 0, 1, 2, then must pay/use card on turn 3).
+In the send offer section:
+On the left should be the user's property list and money at the top. On the right side should be a list of all players. When a player is selected, display the selected player's property list and money (identical to user's side). 
+Users can select properties and/or amount of money from both sides to add to the trade. Once sent it will be sent to the selected players 'Received Offers' section.
 
-4. ✅ COMPLETED - Property colors now shown in player property list with color bar indicator and color name.
-   ⚠️ NOTE: Hover to highlight on board and mortgage/buy houses options NOT implemented (requires complex state management).
-
-5. ✅ COMPLETED - Fixed rent display to show max 1 hotel (was showing multiple). All rent values verified against monopoly_purchasables.json.
-
-6. ✅ COMPLETED - Enhanced game log to show all money transactions with amounts:
-   - Passing GO: "$200 collected"
-   - Rent payments: "paid $X rent to [player] for [property]"
-   - Property purchases: "purchased [property] for $X"
-   - Card effects: "received/paid $X"
-   - Tax payments: "paid $X Income/Luxury Tax"
-   - Repairs: "paid $X for repairs"
-
-7. ✅ COMPLETED - When backend/scripts/resetGame.js runs, all frontend clients are disconnected and redirected to login screen.
+In the Received Offers section:
+Show list of offers from players with preview. Clicking on list item will expand and give option to accept or counter. 

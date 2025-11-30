@@ -69,6 +69,9 @@ jspm_packages/
 # Output of 'npm pack'
 *.tgz
 
+# Claude
+.claude/*
+
 # Yarn Integrity file
 .yarn-integrity
 

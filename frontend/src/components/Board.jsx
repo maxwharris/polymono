@@ -283,6 +283,7 @@ function PropertySpace({ property, position }) {
                     </>
                   ) : (
                     // Property rent: Base, With Set, 1-4 Houses, Hotel
+                    // rent_values array format: [base, with_set, 1H, 2H, 3H, 4H, hotel]
                     <>
                       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.2rem', paddingLeft: '0.5rem' }}>
                         <span style={{ color: '#D0E9DC', fontSize: '12px' }}>Base:</span>
@@ -291,10 +292,10 @@ function PropertySpace({ property, position }) {
                       {property.rent_values.length > 1 && (
                         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.2rem', paddingLeft: '0.5rem' }}>
                           <span style={{ color: '#D0E9DC', fontSize: '12px' }}>With Set:</span>
-                          <span>{formatPrice(property.rent_values[0])}</span>
+                          <span>{formatPrice(property.rent_values[1])}</span>
                         </div>
                       )}
-                      {property.rent_values.slice(1, 6).map((rent, idx) => (
+                      {property.rent_values.slice(2, 7).map((rent, idx) => (
                         <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.2rem', paddingLeft: '0.5rem' }}>
                           <span style={{ color: '#D0E9DC', fontSize: '12px' }}>
                             {idx < 4 ? `${idx + 1} House${idx > 0 ? 's' : ''}:` : 'Hotel:'}

@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
 import Board from './Board';
 import Chat from './Chat';
+import Trade from './Trade';
 import useGameStore from '../store/gameStore';
 import { getPlayerColor } from '../utils/playerColors';
 
 // Property Tooltip Component
-const PropertyTooltip = ({ property, visible, position }) => {
+const PropertyTooltip = ({ property, visible, position, myPlayer, allProperties, onBuyHouses }) => {
   if (!visible || !property) return null;
 
   const PROPERTY_COLORS = {
@@ -35,6 +36,51 @@ const PropertyTooltip = ({ property, visible, position }) => {
   } catch (error) {
     console.error('Error parsing rent_values:', error);
     rentValues = [];
+  }
+
+  // Check if player can build houses
+  let canBuild = false;
+  let buildOptions = [];
+
+  if (myPlayer && allProperties && property.property_type === 'property' && property.owner_id === myPlayer.id) {
+    // Player owns this property - check if they can build
+    const colorGroupProperties = allProperties.filter(
+      p => p.color_group === property.color_group && p.property_type === 'property'
+    );
+    const ownsAll = colorGroupProperties.every(p => p.owner_id === myPlayer.id);
+    const anyMortgaged = colorGroupProperties.some(p => p.is_mortgaged);
+    const houseCounts = colorGroupProperties.map(p => p.house_count || 0);
+    const minHouses = Math.min(...houseCounts);
+
+    canBuild = ownsAll &&
+               !anyMortgaged &&
+               !property.is_mortgaged &&
+               property.house_count < 5 &&
+               property.house_count <= minHouses;
+
+    if (canBuild && property.house_cost) {
+      // Calculate how many houses can be built
+      const maxBuildable = Math.min(
+        5 - (property.house_count || 0),
+        Math.floor(myPlayer.money / property.house_cost)
+      );
+
+      // Respect even building rule
+      const maxBeforeUneven = (property.house_count || 0) <= minHouses ? 1 : 0;
+      const actualMax = Math.min(maxBuildable, maxBeforeUneven);
+
+      if (actualMax > 0) {
+        for (let i = 1; i <= actualMax; i++) {
+          const cost = property.house_cost * i;
+          const newCount = (property.house_count || 0) + i;
+          buildOptions.push({
+            count: i,
+            cost,
+            label: newCount === 5 ? '🏨 Hotel' : `🏠 ${i} House${i > 1 ? 's' : ''}`
+          });
+        }
+      }
+    }
   }
 
   return (
@@ -125,6 +171,7 @@ const PropertyTooltip = ({ property, visible, position }) => {
                 </div>
               </>
             ) : (
+              // rent_values array format: [base, with_set, 1H, 2H, 3H, 4H, hotel]
               <>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.2rem', paddingLeft: '0.5rem' }}>
                   <span style={{ color: '#D0E9DC', fontSize: '12px' }}>Base:</span>
@@ -133,10 +180,10 @@ const PropertyTooltip = ({ property, visible, position }) => {
                 {rentValues.length > 1 && (
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.2rem', paddingLeft: '0.5rem' }}>
                     <span style={{ color: '#D0E9DC', fontSize: '12px' }}>With Set:</span>
-                    <span>{formatPrice(rentValues[0])}</span>
+                    <span>{formatPrice(rentValues[1])}</span>
                   </div>
                 )}
-                {rentValues.slice(1, 6).map((rent, idx) => (
+                {rentValues.slice(2, 7).map((rent, idx) => (
                   <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.2rem', paddingLeft: '0.5rem' }}>
                     <span style={{ color: '#D0E9DC', fontSize: '12px' }}>
                       {idx < 4 ? `${idx + 1} House${idx > 0 ? 's' : ''}:` : 'Hotel:'}
@@ -192,6 +239,64 @@ const PropertyTooltip = ({ property, visible, position }) => {
           </div>
         )}
       </div>
+
+      {/* Build Houses/Hotel Section */}
+      {buildOptions.length > 0 && (
+        <div style={{
+          marginTop: '0.5rem',
+          paddingTop: '0.5rem',
+          borderTop: '1px solid rgba(255,255,255,0.2)',
+        }}>
+          <div style={{
+            color: '#4CAF50',
+            fontWeight: 'bold',
+            marginBottom: '0.5rem',
+            fontSize: '13px'
+          }}>
+            🏗️ Build Options
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+            {buildOptions.map((option, idx) => (
+              <button
+                key={idx}
+                onClick={() => onBuyHouses(property.id, option.count)}
+                style={{
+                  pointerEvents: 'auto',
+                  background: 'linear-gradient(135deg, #4CAF50 0%, #45a049 100%)',
+                  border: '1px solid #45a049',
+                  borderRadius: '4px',
+                  color: 'white',
+                  padding: '0.5rem',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  fontSize: '12px',
+                  fontWeight: 'bold',
+                  transition: 'all 0.2s',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = 'translateY(-2px)';
+                  e.currentTarget.style.boxShadow = '0 4px 8px rgba(76, 175, 80, 0.3)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.boxShadow = 'none';
+                }}
+              >
+                <span>{option.label}</span>
+                <span style={{
+                  background: 'rgba(255,255,255,0.2)',
+                  padding: '0.2rem 0.5rem',
+                  borderRadius: '3px'
+                }}>
+                  {formatPrice(option.cost)}
+                </span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 };
@@ -215,6 +320,7 @@ const Game = () => {
     joinGame,
     rollDice,
     buyProperty,
+    buyHouses,
     endTurn
   } = useGameStore();
 
@@ -226,6 +332,7 @@ const Game = () => {
   const [showLandedPopup, setShowLandedPopup] = useState(false);
   const [showPurchasePopup, setShowPurchasePopup] = useState(false);
   const [showCardPopup, setShowCardPopup] = useState(false);
+  const [showTradeModal, setShowTradeModal] = useState(false);
   const [hoveredProperty, setHoveredProperty] = useState(null);
   const [tooltipPosition, setTooltipPosition] = useState({ x: 0, y: 0 });
 
@@ -315,6 +422,16 @@ const Game = () => {
     }
   };
 
+  const handleBuyHouses = async (propertyId, count) => {
+    try {
+      await buyHouses(propertyId, count);
+      // Success message will be shown via socket event
+    } catch (error) {
+      console.error('Failed to buy houses:', error);
+      alert(error.message || 'Failed to buy houses');
+    }
+  };
+
   return (
     <div style={styles.container}>
       {/* Property Tooltip */}
@@ -322,7 +439,13 @@ const Game = () => {
         property={hoveredProperty}
         visible={hoveredProperty !== null}
         position={tooltipPosition}
+        myPlayer={myPlayer}
+        allProperties={properties}
+        onBuyHouses={handleBuyHouses}
       />
+
+      {/* Trade Modal */}
+      <Trade isOpen={showTradeModal} onClose={() => setShowTradeModal(false)} />
 
       {/* Header */}
       <header style={styles.header}>
@@ -415,6 +538,9 @@ const Game = () => {
                   <div style={styles.playerMoney}>${player.money.toLocaleString()}</div>
                   {player.is_in_jail && (
                     <div style={styles.jailBadge}>🔒 In Jail</div>
+                  )}
+                  {player.get_out_of_jail_cards > 0 && (
+                    <div style={styles.jailCardBadge}>🎴 Jail Card ×{player.get_out_of_jail_cards}</div>
                   )}
                   {player.is_bankrupt && (
                     <div style={styles.bankruptBadge}>💔 BANKRUPT</div>
@@ -552,6 +678,14 @@ const Game = () => {
                 >
                   <span style={styles.actionIcon}>⏭</span>
                   End Turn
+                </button>
+
+                <button
+                  onClick={() => setShowTradeModal(true)}
+                  style={styles.tradeButton}
+                >
+                  <span style={styles.actionIcon}>🤝</span>
+                  Trade
                 </button>
               </div>
             </div>
@@ -938,6 +1072,17 @@ const styles = {
     color: '#FFB3B3',
     display: 'inline-block',
   },
+  jailCardBadge: {
+    marginTop: '0.5rem',
+    padding: '0.25rem 0.5rem',
+    background: 'rgba(255, 215, 0, 0.2)',
+    border: '1px solid var(--monopoly-gold)',
+    borderRadius: 'var(--radius-sm)',
+    fontSize: '0.8rem',
+    color: '#FFD700',
+    display: 'inline-block',
+    fontWeight: '600',
+  },
   bankruptBadge: {
     marginTop: '0.5rem',
     padding: '0.25rem 0.5rem',
@@ -960,6 +1105,22 @@ const styles = {
     alignItems: 'center',
     justifyContent: 'center',
     gap: '0.5rem',
+  },
+  tradeButton: {
+    width: '100%',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: '0.5rem',
+    background: 'linear-gradient(135deg, #9C27B0 0%, #7B1FA2 100%)',
+    border: 'none',
+    padding: '0.75rem',
+    borderRadius: 'var(--radius-md)',
+    color: 'white',
+    fontSize: '1rem',
+    fontWeight: '600',
+    cursor: 'pointer',
+    transition: 'all 0.2s',
   },
   actionIcon: {
     fontSize: '1.25rem',

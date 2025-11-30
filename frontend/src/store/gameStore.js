@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import socketService from '../services/socket';
 
 // Backend API URL - use environment variable or default to domain
-const API_URL = import.meta.env.VITE_BACKEND_URL || 'http://mp.maxharris.io:3001';
+const API_URL = import.meta.env.VITE_BACKEND_URL || '';
 
 const useGameStore = create((set, get) => ({
   // Authentication
@@ -78,7 +78,14 @@ const useGameStore = create((set, get) => ({
     socket.off('game:state');
     socket.off('game:dice_rolled');
     socket.off('game:property_purchased');
+    socket.off('game:houses_purchased');
     socket.off('game:turn_change');
+    socket.off('game:jail_card_used');
+    socket.off('trade:new_offer');
+    socket.off('trade:accepted');
+    socket.off('trade:rejected');
+    socket.off('trade:countered');
+    socket.off('trade:cancelled');
     socket.off('chat:message');
     socket.off('player:connected');
     socket.off('player:disconnected');
@@ -150,6 +157,8 @@ const useGameStore = create((set, get) => ({
                 get().addToGameLog(`🔨 ${landing.player.username} paid $${effect.totalCost} for repairs (${effect.houses} house(s), ${effect.hotels} hotel(s))`);
               } else if (effect.type === 'sent_to_jail') {
                 get().addToGameLog(`🚓 ${landing.player.username} was sent to jail`);
+              } else if (effect.type === 'received_jail_card') {
+                get().addToGameLog(`🎴 ${landing.player.username} received a Get Out of Jail Free card!`);
               }
             });
           }
@@ -192,6 +201,14 @@ const useGameStore = create((set, get) => ({
       }, 10);
     });
 
+    socket.on('game:houses_purchased', (result) => {
+      const houseText = result.newHouseCount === 5 ? '🏨 Hotel' :
+                        result.housesAdded === 1 ? '🏠 House' :
+                        `🏠 ${result.housesAdded} Houses`;
+      get().addToGameLog(`🏗️ ${result.player.username} built ${houseText} on ${result.property.name} for $${result.cost}`);
+      get().refreshGameState();
+    });
+
     socket.on('game:turn_change', (result) => {
       if (result.gameOver) {
         get().addToGameLog(`Game Over! Winner: ${result.winner?.username || 'None'}`);
@@ -201,6 +218,37 @@ const useGameStore = create((set, get) => ({
       // Reset canRollAgain for the new turn
       set({ canRollAgain: true });
       get().refreshGameState();
+    });
+
+    // Trade events
+    socket.on('trade:new_offer', (data) => {
+      get().addToGameLog(`🤝 ${data.proposer_username} sent a trade offer`);
+    });
+
+    socket.on('trade:accepted', (data) => {
+      // Build detailed trade log message
+      let message = `✅ Trade completed: ${data.proposer_username}`;
+      if (data.proposerGave) {
+        message += ` gave ${data.proposerGave}`;
+      }
+      message += ` ↔️ ${data.recipient_username}`;
+      if (data.recipientGave) {
+        message += ` gave ${data.recipientGave}`;
+      }
+      get().addToGameLog(message);
+      get().refreshGameState();
+    });
+
+    socket.on('trade:rejected', (data) => {
+      get().addToGameLog(`❌ ${data.recipient_username} rejected trade from ${data.proposer_username}`);
+    });
+
+    socket.on('trade:countered', (data) => {
+      get().addToGameLog(`🔄 ${data.recipient_username} countered trade from ${data.proposer_username}`);
+    });
+
+    socket.on('trade:cancelled', (data) => {
+      get().addToGameLog(`🚫 ${data.proposer_username} cancelled a trade offer`);
     });
 
     socket.on('chat:message', (message) => {
@@ -238,6 +286,11 @@ const useGameStore = create((set, get) => ({
 
     socket.on('game:started', () => {
       get().addToGameLog('Game has started!');
+      get().refreshGameState();
+    });
+
+    socket.on('game:jail_card_used', (data) => {
+      get().addToGameLog(`🎴 ${data.username} used a Get Out of Jail Free card and was freed from jail!`);
       get().refreshGameState();
     });
 
@@ -372,6 +425,28 @@ const useGameStore = create((set, get) => ({
       return await response.json();
     } catch (error) {
       console.error('Buy property error:', error);
+      throw error;
+    }
+  },
+
+  buyHouses: async (propertyId, count) => {
+    const { token } = get();
+    try {
+      const response = await fetch(`${API_URL}/api/game/buy-houses`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ propertyId, count })
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.message || 'Failed to buy houses');
+      }
+      return data;
+    } catch (error) {
+      console.error('Buy houses error:', error);
       throw error;
     }
   },

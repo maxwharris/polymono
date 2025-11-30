@@ -27,8 +27,8 @@ class SocketService {
       this.socket.disconnect();
     }
 
-    // Use environment variable or fallback to domain
-    const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://mp.maxharris.io:3001';
+    // Use environment variable or fallback to current origin (for proxy)
+    const backendUrl = import.meta.env.VITE_BACKEND_URL || window.location.origin;
 
     this.socket = io(backendUrl, {
       auth: { token },

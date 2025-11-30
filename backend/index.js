@@ -6,19 +6,23 @@ require('dotenv').config();
 
 const app = express();
 const server = http.createServer(app);
+
+const corsOptions = {
+  origin: [
+    process.env.FRONTEND_URL || "http://mp.maxharris.io",
+    "http://localhost:5173",
+    "http://mp.maxharris.io:80",
+    "http://mp.maxharris.io"
+  ],
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  credentials: true
+};
+
 const io = socketIo(server, {
-  cors: {
-    origin: [
-      process.env.FRONTEND_URL || "http://mp.maxharris.io",
-      "http://localhost:5173",
-      "http://mp.maxharris.io:80"
-    ],
-    methods: ["GET", "POST"],
-    credentials: true
-  }
+  cors: corsOptions
 });
 
-app.use(cors());
+app.use(cors(corsOptions));
 app.use(express.json());
 
 // Initialize game controller
@@ -30,10 +34,12 @@ app.io = io;
 const authRoutes = require('./routes/auth');
 const gameRoutes = require('./routes/game');
 const chatRoutes = require('./routes/chat');
+const tradeRoutes = require('./routes/trade');
 
 app.use('/api/auth', authRoutes);
 app.use('/api/game', gameRoutes);
 app.use('/api/chat', chatRoutes);
+app.use('/api/trade', tradeRoutes);
 
 // Basic route
 app.get('/', (req, res) => {

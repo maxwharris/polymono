@@ -4,7 +4,7 @@
 
 const { rollDice } = require('./mechanics/dice');
 const { movePlayer } = require('./mechanics/movement');
-const { purchaseProperty, calculateRent, payRent } = require('./mechanics/property');
+const { purchaseProperty, calculateRent, payRent, canBuildOnProperty, purchaseHouses } = require('./mechanics/property');
 const { sendToJail, tryGetOutOfJail, incrementJailTurns } = require('./mechanics/jail');
 const { drawCard } = require('./mechanics/cards');
 const turnManager = require('./mechanics/turnManager');
@@ -23,6 +23,9 @@ class GameController {
     this.io = io; // Socket.io instance
     this.currentDiceRoll = null;
     this.doublesCount = new Map(); // Track doubles per player
+
+    // Set the io instance on turnManager
+    turnManager.setIO(io);
   }
 
   async handleRollDice(userId) {
@@ -248,6 +251,40 @@ class GameController {
     await logGameAction(player.id, 'buy_property', { propertyId });
 
     return { success: true, property, player, ...result };
+  }
+
+  async handleBuyHouses(userId, propertyId, count) {
+    const player = await getPlayerByUserId(userId);
+    const allProperties = await getAllProperties();
+    const property = allProperties.find(p => p.id === propertyId);
+
+    if (!property) {
+      throw new Error('Property not found');
+    }
+
+    // Check if player can build
+    const buildCheck = await canBuildOnProperty(player, property);
+    if (!buildCheck.canBuild) {
+      throw new Error(buildCheck.reason);
+    }
+
+    const result = await purchaseHouses(player, property, count);
+    await logGameAction(player.id, 'buy_houses', {
+      propertyId,
+      count,
+      cost: result.cost
+    });
+
+    // Refresh property data
+    const updatedProperties = await getAllProperties();
+    const updatedProperty = updatedProperties.find(p => p.id === propertyId);
+
+    return {
+      success: true,
+      property: updatedProperty,
+      player: await getPlayerByUserId(userId),
+      ...result
+    };
   }
 
   async handleEndTurn(userId) {

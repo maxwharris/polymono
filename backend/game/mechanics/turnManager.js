@@ -2,11 +2,17 @@
  * Turn management for Monopoly
  */
 
-const { getAllPlayers, updateGame, getGame, logGameAction } = require('../../db/queries');
+const { getAllPlayers, updateGame, getGame, logGameAction, getPlayerByUserId } = require('../../db/queries');
+const { tryGetOutOfJail } = require('./jail');
 
 class TurnManager {
   constructor() {
     this.turnTimeout = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
+    this.io = null; // Socket.io instance for broadcasting
+  }
+
+  setIO(io) {
+    this.io = io;
   }
 
   async startTurn(userId) {
@@ -19,7 +25,30 @@ class TurnManager {
 
     await logGameAction(null, 'turn_start', { userId, deadline });
 
-    return { userId, deadline };
+    // Check if player is in jail and has a Get Out of Jail Free card
+    const player = await getPlayerByUserId(userId);
+    let usedJailCard = false;
+
+    if (player && player.is_in_jail && player.get_out_of_jail_cards > 0) {
+      try {
+        const cardResult = await tryGetOutOfJail(player, 'card');
+        await logGameAction(player.id, 'used_jail_card', { cardsRemaining: cardResult.cardsRemaining });
+        usedJailCard = true;
+
+        // Broadcast jail card usage to all clients
+        if (this.io) {
+          this.io.emit('game:jail_card_used', {
+            user_id: userId,
+            username: player.username,
+            cardsRemaining: cardResult.cardsRemaining
+          });
+        }
+      } catch (error) {
+        console.error('Error using jail card on turn start:', error);
+      }
+    }
+
+    return { userId, deadline, usedJailCard };
   }
 
   async endTurn() {
