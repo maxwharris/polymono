@@ -1,6 +1,6 @@
-import { Canvas, useFrame } from '@react-three/fiber';
-import { OrbitControls, Text, Html } from '@react-three/drei';
-import { useMemo, useState, useRef, useEffect } from 'react';
+import { Canvas, useFrame, useLoader } from '@react-three/fiber';
+import { OrbitControls, Text, Html, useGLTF } from '@react-three/drei';
+import { useMemo, useState, useRef, useEffect, Suspense } from 'react';
 import useGameStore from '../store/gameStore';
 import { getPlayerColor } from '../utils/playerColors';
 import * as THREE from 'three';
@@ -13,7 +13,7 @@ function calculateBoardPositions() {
   const regularSpaceSize = (boardSize - 2 * cornerSize) / 9; // Calculate space size to fit perfectly
 
   // Bottom row (0-10): Right to left
-  // Position 0 (GO - corner at bottom-right)
+  // Position 0 (New Year's Eve - corner at bottom-right)
   positions.push([boardSize/2 - cornerSize/2, 0, boardSize/2 - cornerSize/2]);
 
   // Positions 1-9 (regular spaces)
@@ -25,7 +25,7 @@ function calculateBoardPositions() {
     ]);
   }
 
-  // Position 10 (Jail - corner at bottom-left)
+  // Position 10 (Rikers - corner at bottom-left)
   positions.push([-boardSize/2 + cornerSize/2, 0, boardSize/2 - cornerSize/2]);
 
   // Left side (11-19): Bottom to top
@@ -37,7 +37,7 @@ function calculateBoardPositions() {
     ]);
   }
 
-  // Position 20 (Free Parking - corner at top-left)
+  // Position 20 (Lost and Found - corner at top-left)
   positions.push([-boardSize/2 + cornerSize/2, 0, -boardSize/2 + cornerSize/2]);
 
   // Top row (21-29): Left to right
@@ -49,7 +49,7 @@ function calculateBoardPositions() {
     ]);
   }
 
-  // Position 30 (Go To Jail - corner at top-right)
+  // Position 30 (Arrested by NYPD - corner at top-right)
   positions.push([boardSize/2 - cornerSize/2, 0, -boardSize/2 + cornerSize/2]);
 
   // Right side (31-39): Top to bottom
@@ -77,6 +77,82 @@ const PROPERTY_COLORS = {
   utility: '#FFFFFF'
 };
 
+// Helper function to get texture path for a property/space
+function getTexturePath(name) {
+  // Convert property name to filename format (lowercase, no spaces/apostrophes)
+  const filename = name
+    .toLowerCase()
+    .replace(/'/g, '')
+    .replace(/\s+/g, '')
+    .replace(/&/g, 'and');
+
+  return `/board/${filename}.png`;
+}
+
+// Component for the center board texture
+function CenterBoard() {
+  const boardTexture = useLoader(THREE.TextureLoader, '/board/board.png');
+
+  return (
+    <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.01, 0]}>
+      <planeGeometry args={[24, 24]} />
+      <meshStandardMaterial
+        map={boardTexture}
+        transparent={true}
+      />
+    </mesh>
+  );
+}
+
+// Component for the logo in the center of the board
+function CenterLogo() {
+  const texture = useLoader(THREE.TextureLoader, '/polymono-logo.png');
+
+  return (
+    <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.33, 0]}>
+      <planeGeometry args={[8, 8]} />
+      <meshStandardMaterial
+        map={texture}
+        transparent={true}
+        emissive="#FFFFFF"
+        emissiveIntensity={0.2}
+      />
+    </mesh>
+  );
+}
+
+// Textured property component that loads texture
+function TexturedProperty({ property, position, hovered, setHovered, ownerColor }) {
+  const texture = useLoader(THREE.TextureLoader, getTexturePath(property.name));
+
+  const getRotation = () => {
+    const pos = property.position_on_board;
+    if (pos >= 0 && pos <= 10) return [0, 0, 0];
+    if (pos >= 11 && pos <= 19) return [0, -Math.PI / 2, 0];
+    if (pos >= 20 && pos <= 30) return [0, Math.PI, 0];
+    return [0, Math.PI / 2, 0];
+  };
+
+  const isOwned = property.owner_id !== null;
+
+  return (
+    <mesh
+      rotation={[-Math.PI / 2, 0, getRotation()[1]]}
+      position={[0, 0.31, 0]}
+      onPointerOver={() => setHovered(true)}
+      onPointerOut={() => setHovered(false)}
+    >
+      <planeGeometry args={[2.2, 2.2]} />
+      <meshStandardMaterial
+        map={texture}
+        transparent={true}
+        emissive={hovered ? '#FFFFFF' : (isOwned ? ownerColor : '#000000')}
+        emissiveIntensity={hovered ? 0.3 : (isOwned ? 0.2 : 0)}
+      />
+    </mesh>
+  );
+}
+
 function PropertySpace({ property, position }) {
   const [hovered, setHovered] = useState(false);
   const { players } = useGameStore();
@@ -88,7 +164,10 @@ function PropertySpace({ property, position }) {
   const owner = isOwned ? players.find(p => p.id === property.owner_id) : null;
   const ownerColor = owner ? getPlayerColor(owner.turn_order).hex : null;
 
-  // Determine rotation based on position for text
+  // Check if texture should exist for this property (database uses property_type field)
+  const hasTexture = property.property_type === 'property' || property.property_type === 'railroad' || property.property_type === 'utility';
+
+  // Determine rotation based on position for text and texture
   const getRotation = () => {
     const pos = property.position_on_board;
     if (pos >= 0 && pos <= 10) return [0, 0, 0]; // Bottom - text faces outward (south)
@@ -123,71 +202,84 @@ function PropertySpace({ property, position }) {
 
   return (
     <group position={position}>
-      {/* Property space base - now interactive */}
-      <mesh
-        onPointerOver={() => setHovered(true)}
-        onPointerOut={() => setHovered(false)}
-      >
-        <boxGeometry args={[2.2, 0.3, 2.2]} />
-        <meshStandardMaterial
-          color={hovered ? '#FFFFFF' : (isOwned ? ownerColor : '#EFEFEF')}
-          emissive={hovered ? '#666666' : '#000000'}
-          emissiveIntensity={hovered ? 0.3 : 0}
+      {hasTexture ? (
+        // Use textured plane if texture should exist
+        <TexturedProperty
+          property={property}
+          position={position}
+          hovered={hovered}
+          setHovered={setHovered}
+          ownerColor={ownerColor}
         />
-      </mesh>
-
-      {/* Color strip for properties */}
-      {property.color_group && (() => {
-        const barTransform = getColorBarTransform();
-        return (
-          <mesh position={barTransform.position} rotation={barTransform.rotation}>
-            <boxGeometry args={barTransform.size} />
-            <meshStandardMaterial color={color} />
+      ) : (
+        // Fallback to original rendering for non-property spaces
+        <>
+          <mesh
+            onPointerOver={() => setHovered(true)}
+            onPointerOut={() => setHovered(false)}
+          >
+            <boxGeometry args={[2.2, 0.3, 2.2]} />
+            <meshStandardMaterial
+              color={hovered ? '#FFFFFF' : (isOwned ? ownerColor : '#EFEFEF')}
+              emissive={hovered ? '#666666' : '#000000'}
+              emissiveIntensity={hovered ? 0.3 : 0}
+            />
           </mesh>
-        );
-      })()}
 
-      {/* Property name */}
-      <Text
-        position={[0, 0.32, 0]}
-        rotation={[-Math.PI / 2, 0, getRotation()[1]]}
-        fontSize={0.25}
-        color="#1a1a1a"
-        anchorX="center"
-        anchorY="middle"
-        maxWidth={2}
-        textAlign="center"
-      >
-        {property.name}
-      </Text>
+          {/* Color strip for properties */}
+          {property.color_group && (() => {
+            const barTransform = getColorBarTransform();
+            return (
+              <mesh position={barTransform.position} rotation={barTransform.rotation}>
+                <boxGeometry args={barTransform.size} />
+                <meshStandardMaterial color={color} />
+              </mesh>
+            );
+          })()}
 
-      {/* Price */}
-      {property.price && (() => {
-        const pos = property.position_on_board;
-        let pricePosition;
-        if (pos >= 0 && pos <= 10) {
-          pricePosition = [0, 0.32, -0.6]; // Bottom row: price near center
-        } else if (pos >= 11 && pos <= 19) {
-          pricePosition = [0.6, 0.32, 0]; // Left side: price near center
-        } else if (pos >= 20 && pos <= 30) {
-          pricePosition = [0, 0.32, 0.6]; // Top row: price near center
-        } else {
-          pricePosition = [-0.6, 0.32, 0]; // Right side: price near center
-        }
-        return (
+          {/* Property name */}
           <Text
-            position={pricePosition}
+            position={[0, 0.32, 0]}
             rotation={[-Math.PI / 2, 0, getRotation()[1]]}
-            fontSize={0.2}
-            color="#1B5E20"
+            fontSize={0.25}
+            color="#1a1a1a"
             anchorX="center"
             anchorY="middle"
-            fontWeight="bold"
+            maxWidth={2}
+            textAlign="center"
           >
-            {formatPrice(property.price)}
+            {property.name}
           </Text>
-        );
-      })()}
+
+          {/* Price */}
+          {property.price && (() => {
+            const pos = property.position_on_board;
+            let pricePosition;
+            if (pos >= 0 && pos <= 10) {
+              pricePosition = [0, 0.32, -0.6]; // Bottom row: price near center
+            } else if (pos >= 11 && pos <= 19) {
+              pricePosition = [0.6, 0.32, 0]; // Left side: price near center
+            } else if (pos >= 20 && pos <= 30) {
+              pricePosition = [0, 0.32, 0.6]; // Top row: price near center
+            } else {
+              pricePosition = [-0.6, 0.32, 0]; // Right side: price near center
+            }
+            return (
+              <Text
+                position={pricePosition}
+                rotation={[-Math.PI / 2, 0, getRotation()[1]]}
+                fontSize={0.2}
+                color="#1B5E20"
+                anchorX="center"
+                anchorY="middle"
+                fontWeight="bold"
+              >
+                {formatPrice(property.price)}
+              </Text>
+            );
+          })()}
+        </>
+      )}
 
       {/* Hover info card */}
       {hovered && (
@@ -384,24 +476,55 @@ function PropertySpace({ property, position }) {
 }
 
 // Component for special spaces (corners, chance, community chest, tax, etc.)
+// Textured special space component
+function TexturedSpecialSpace({ spaceInfo, positionNumber, hovered, setHovered }) {
+  const texture = useLoader(THREE.TextureLoader, getTexturePath(spaceInfo.name));
+
+  const getRotation = () => {
+    if (positionNumber >= 0 && positionNumber <= 10) return [0, 0, 0];
+    if (positionNumber >= 11 && positionNumber <= 19) return [0, -Math.PI / 2, 0];
+    if (positionNumber >= 20 && positionNumber <= 30) return [0, Math.PI, 0];
+    return [0, Math.PI / 2, 0];
+  };
+
+  const isCorner = spaceInfo.type === 'corner';
+
+  return (
+    <mesh
+      rotation={[-Math.PI / 2, 0, getRotation()[1]]}
+      position={[0, 0.31, 0]}
+      onPointerOver={() => setHovered(true)}
+      onPointerOut={() => setHovered(false)}
+    >
+      <planeGeometry args={isCorner ? [3.5, 3.5] : [2.2, 2.2]} />
+      <meshStandardMaterial
+        map={texture}
+        transparent={true}
+        emissive={hovered ? '#FFFFFF' : '#000000'}
+        emissiveIntensity={hovered ? 0.3 : 0}
+      />
+    </mesh>
+  );
+}
+
 function SpecialSpace({ position, positionNumber }) {
   const [hovered, setHovered] = useState(false);
 
   // Define special space types and colors
   const getSpaceInfo = (pos) => {
     const specialSpaces = {
-      0: { name: 'GO', color: '#E31E24', type: 'corner' },
-      2: { name: 'Community Chest', color: '#87CEEB', type: 'special' },
-      4: { name: 'Income Tax', color: '#CCCCCC', type: 'tax' },
-      7: { name: 'Chance', color: '#FFA500', type: 'special' },
-      10: { name: 'Jail', color: '#FFA500', type: 'corner' },
-      17: { name: 'Community Chest', color: '#87CEEB', type: 'special' },
-      20: { name: 'Free Parking', color: '#E31E24', type: 'corner' },
-      22: { name: 'Chance', color: '#FFA500', type: 'special' },
-      30: { name: 'Go To Jail', color: '#E31E24', type: 'corner' },
-      33: { name: 'Community Chest', color: '#87CEEB', type: 'special' },
-      36: { name: 'Chance', color: '#FFA500', type: 'special' },
-      38: { name: 'Luxury Tax', color: '#CCCCCC', type: 'tax' },
+      0: { name: "New Year's Eve", color: '#E31E24', type: 'corner' },
+      2: { name: 'Community Fund', color: '#87CEEB', type: 'special' },
+      4: { name: 'City Income Tax', color: '#CCCCCC', type: 'tax' },
+      7: { name: 'Opportunity', color: '#FFA500', type: 'special' },
+      10: { name: 'Rikers', color: '#FFA500', type: 'corner' },
+      17: { name: 'Community Fund', color: '#87CEEB', type: 'special' },
+      20: { name: 'Lost and Found', color: '#E31E24', type: 'corner' },
+      22: { name: 'Opportunity', color: '#FFA500', type: 'special' },
+      30: { name: 'Arrested by NYPD', color: '#E31E24', type: 'corner' },
+      33: { name: 'Community Fund', color: '#87CEEB', type: 'special' },
+      36: { name: 'Opportunity', color: '#FFA500', type: 'special' },
+      38: { name: 'Penthouse Luxury Tax', color: '#CCCCCC', type: 'tax' },
     };
     return specialSpaces[pos] || null;
   };
@@ -420,32 +543,42 @@ function SpecialSpace({ position, positionNumber }) {
 
   return (
     <group position={position}>
-      {/* Space base */}
-      <mesh
-        onPointerOver={() => setHovered(true)}
-        onPointerOut={() => setHovered(false)}
-      >
-        <boxGeometry args={isCorner ? [3.5, 0.3, 3.5] : [2.2, 0.3, 2.2]} />
-        <meshStandardMaterial
-          color={hovered ? '#FFFFFF' : spaceInfo.color}
-          emissive={hovered ? '#666666' : '#000000'}
-          emissiveIntensity={hovered ? 0.3 : 0}
-        />
-      </mesh>
+      <TexturedSpecialSpace
+        spaceInfo={spaceInfo}
+        positionNumber={positionNumber}
+        hovered={hovered}
+        setHovered={setHovered}
+      />
+      {/* Fallback rendering is removed since we always have textures for special spaces */}
+      {false && (
+        <>
+          <mesh
+            onPointerOver={() => setHovered(true)}
+            onPointerOut={() => setHovered(false)}
+          >
+            <boxGeometry args={isCorner ? [3.5, 0.3, 3.5] : [2.2, 0.3, 2.2]} />
+            <meshStandardMaterial
+              color={hovered ? '#FFFFFF' : spaceInfo.color}
+              emissive={hovered ? '#666666' : '#000000'}
+              emissiveIntensity={hovered ? 0.3 : 0}
+            />
+          </mesh>
 
-      {/* Space name */}
-      <Text
-        position={[0, 0.32, 0]}
-        rotation={[-Math.PI / 2, 0, getRotation()[1]]}
-        fontSize={isCorner ? 0.35 : 0.22}
-        color="#FFFFFF"
-        anchorX="center"
-        anchorY="middle"
-        maxWidth={2}
-        textAlign="center"
-      >
-        {spaceInfo.name}
-      </Text>
+          {/* Space name */}
+          <Text
+            position={[0, 0.32, 0]}
+            rotation={[-Math.PI / 2, 0, getRotation()[1]]}
+            fontSize={isCorner ? 0.35 : 0.22}
+            color="#FFFFFF"
+            anchorX="center"
+            anchorY="middle"
+            maxWidth={2}
+            textAlign="center"
+          >
+            {spaceInfo.name}
+          </Text>
+        </>
+      )}
 
       {/* Hover info */}
       {hovered && (
@@ -508,70 +641,151 @@ function SpecialSpace({ position, positionNumber }) {
   );
 }
 
+// Component for 3D model tokens (GLB files)
+function ModelToken({ modelPath, position, scale = 0.5, rotation = [0, 0, 0] }) {
+  const { scene } = useGLTF(modelPath);
+  const clonedScene = useMemo(() => {
+    const clone = scene.clone();
+
+    // Apply gold color to all materials in the model
+    clone.traverse((child) => {
+      if (child.isMesh) {
+        // Clone material to avoid affecting the original
+        child.material = child.material.clone();
+        // Set gold color
+        child.material.color.set('#D4AF37');
+        // Add metallic gold effect
+        child.material.metalness = 0.7;
+        child.material.roughness = 0.3;
+      }
+    });
+
+    return clone;
+  }, [scene]);
+
+  return (
+    <primitive
+      object={clonedScene}
+      position={position}
+      scale={scale}
+      rotation={rotation}
+    />
+  );
+}
+
 function PlayerToken({ player, position, index, boardPositions }) {
   const meshRef = useRef();
+  const groupRef = useRef();
   const [targetPos, setTargetPos] = useState(position);
+  const [targetRotation, setTargetRotation] = useState(0);
   const [hovered, setHovered] = useState(false);
   const prevPlayerPosition = useRef(player.position);
   const initializedRef = useRef(false);
 
-  const TOKEN_SHAPES = {
-    car: { type: 'box', args: [0.7, 0.5, 1.1], color: '#E31E24' },
-    hat: { type: 'cone', args: [0.5, 0.9, 8], color: '#1E90FF' },
-    dog: { type: 'sphere', args: [0.5], color: '#8B4513' },
-    ship: { type: 'cylinder', args: [0.4, 0.6, 1.1, 8], color: '#9370DB' },
-    thimble: { type: 'cylinder', args: [0.3, 0.4, 0.7, 6], color: '#C0C0C0' }
+  // Gold color for all pieces
+  const GOLD_COLOR = '#D4AF37';
+
+  // Define which tokens use 3D models vs geometric shapes
+  const TOKEN_MODELS = {
+    taxi: { model: '/tokens/taxi.glb', scale: 0.6, baseRotation: [0, -Math.PI / 2, 0], color: GOLD_COLOR },
+    pigeon: { model: '/tokens/pigeon.glb', scale: 0.6, baseRotation: [0, -Math.PI / 2, 0], color: GOLD_COLOR },
+    empire: { model: '/tokens/empire.glb', scale: 0.6, baseRotation: [0, -Math.PI / 2, 0], color: GOLD_COLOR },
+    subway: { model: '/tokens/subway.glb', scale: 0.6, baseRotation: [0, -Math.PI / 2, 0], color: GOLD_COLOR },
+    bull: { model: '/tokens/bull.glb', scale: 0.6, baseRotation: [0, -Math.PI / 2, 0], color: GOLD_COLOR },
+    rat: { model: '/tokens/rat.glb', scale: 0.6, baseRotation: [0, -Math.PI / 2, 0], color: GOLD_COLOR }
   };
 
-  const token = TOKEN_SHAPES[player.token_type] || TOKEN_SHAPES.car;
+  const TOKEN_SHAPES = {
+    car: { type: 'box', args: [0.7, 0.5, 1.1], color: GOLD_COLOR },
+    hat: { type: 'cone', args: [0.5, 0.9, 8], color: GOLD_COLOR },
+    dog: { type: 'sphere', args: [0.5], color: GOLD_COLOR },
+    ship: { type: 'cylinder', args: [0.4, 0.6, 1.1, 8], color: GOLD_COLOR },
+    thimble: { type: 'cylinder', args: [0.3, 0.4, 0.7, 6], color: GOLD_COLOR }
+  };
+
+  const isModelToken = TOKEN_MODELS[player.token_type];
+  const token = isModelToken || TOKEN_SHAPES[player.token_type] || TOKEN_SHAPES.car;
+
+  // Calculate rotation based on board position
+  const getRotationForPosition = (pos) => {
+    if (pos >= 0 && pos <= 10) return 0; // Bottom - facing right
+    if (pos >= 11 && pos <= 20) return -Math.PI / 2; // Left - facing up
+    if (pos >= 21 && pos <= 30) return Math.PI; // Top - facing left
+    return Math.PI / 2; // Right - facing down
+  };
 
   // Offset multiple players on same space
   const offsetX = (index % 2) * 0.6 - 0.3;
   const offsetZ = Math.floor(index / 2) * 0.6 - 0.3;
 
-  // Initialize mesh position on first render
+  // Initialize position and rotation on first render
   useEffect(() => {
-    if (meshRef.current && !initializedRef.current) {
-      meshRef.current.position.set(
+    const ref = isModelToken ? groupRef : meshRef;
+    if (ref.current && !initializedRef.current) {
+      ref.current.position.set(
         position[0] + offsetX,
         position[1] + 0.8,
         position[2] + offsetZ
       );
+      const initialRotation = getRotationForPosition(player.position);
+      setTargetRotation(initialRotation);
+      if (isModelToken) {
+        ref.current.rotation.y = isModelToken.baseRotation[1] + initialRotation;
+      }
       initializedRef.current = true;
     }
-  }, [position, offsetX, offsetZ]);
+  }, [position, offsetX, offsetZ, isModelToken, player.position]);
 
-  // Update target position when player position changes
+  // Update target position and rotation when player position changes
   useEffect(() => {
     if (prevPlayerPosition.current !== player.position) {
       const newBoardPos = boardPositions[player.position];
       if (newBoardPos) {
         setTargetPos(newBoardPos);
+
+        // Calculate new rotation based on position
+        const newRotation = getRotationForPosition(player.position);
+        setTargetRotation(newRotation);
+
         prevPlayerPosition.current = player.position;
       }
     }
   }, [player.position, boardPositions]);
 
-  // Animate movement
+  // Animate movement and rotation
   useFrame(() => {
-    if (meshRef.current && targetPos) {
-      const current = meshRef.current.position;
+    const ref = isModelToken ? groupRef : meshRef;
+    if (ref.current && targetPos) {
+      const current = ref.current.position;
       const target = new THREE.Vector3(
         targetPos[0] + offsetX,
         targetPos[1] + 0.8,
         targetPos[2] + offsetZ
       );
 
-      // Smooth interpolation
+      // Smooth interpolation for position
       const speed = 0.05; // Adjust this to change animation speed (lower = slower)
       current.x += (target.x - current.x) * speed;
       current.y += (target.y - current.y) * speed;
       current.z += (target.z - current.z) * speed;
 
+      // Smooth interpolation for rotation (only for 3D models)
+      if (isModelToken) {
+        const targetRot = isModelToken.baseRotation[1] + targetRotation;
+        const currentRot = ref.current.rotation.y;
+
+        // Handle wrapping around -PI to PI
+        let rotDiff = targetRot - currentRot;
+        if (rotDiff > Math.PI) rotDiff -= 2 * Math.PI;
+        if (rotDiff < -Math.PI) rotDiff += 2 * Math.PI;
+
+        ref.current.rotation.y += rotDiff * speed;
+      }
+
       // Add a slight bounce effect
       const distance = current.distanceTo(target);
       if (distance > 0.01) {
-        meshRef.current.position.y += Math.sin(Date.now() * 0.01) * 0.05;
+        ref.current.position.y += Math.sin(Date.now() * 0.01) * 0.05;
       }
     }
   });
@@ -593,27 +807,44 @@ function PlayerToken({ player, position, index, boardPositions }) {
 
   return (
     <group>
-      <mesh
-        ref={meshRef}
-        onPointerOver={() => setHovered(true)}
-        onPointerOut={() => setHovered(false)}
-      >
-        <GeometryComponent />
-        <meshStandardMaterial
-          color={token.color}
-          metalness={0.4}
-          roughness={0.6}
-          emissive={hovered ? token.color : '#000000'}
-          emissiveIntensity={hovered ? 0.5 : 0}
-        />
-      </mesh>
+      {isModelToken ? (
+        // Render 3D model token
+        <group
+          ref={groupRef}
+          onPointerOver={() => setHovered(true)}
+          onPointerOut={() => setHovered(false)}
+        >
+          <ModelToken
+            modelPath={isModelToken.model}
+            position={[0, 0, 0]}
+            scale={isModelToken.scale}
+            rotation={[isModelToken.baseRotation[0], 0, isModelToken.baseRotation[2]]}
+          />
+        </group>
+      ) : (
+        // Render geometric shape token
+        <mesh
+          ref={meshRef}
+          onPointerOver={() => setHovered(true)}
+          onPointerOut={() => setHovered(false)}
+        >
+          <GeometryComponent />
+          <meshStandardMaterial
+            color={token.color}
+            metalness={0.4}
+            roughness={0.6}
+            emissive={hovered ? token.color : '#000000'}
+            emissiveIntensity={hovered ? 0.5 : 0}
+          />
+        </mesh>
+      )}
 
       {/* Hover label */}
-      {hovered && meshRef.current && (
+      {hovered && ((isModelToken && groupRef.current) || (!isModelToken && meshRef.current)) && (
         <Html position={[
-          meshRef.current.position.x,
-          meshRef.current.position.y + 1.7,
-          meshRef.current.position.z
+          (isModelToken ? groupRef.current : meshRef.current).position.x,
+          (isModelToken ? groupRef.current : meshRef.current).position.y + 1.7,
+          (isModelToken ? groupRef.current : meshRef.current).position.z
         ]} center>
           <div style={{
             background: 'linear-gradient(135deg, #1E5742 0%, #0A3D2C 100%)',
@@ -658,6 +889,45 @@ function PlayerToken({ player, position, index, boardPositions }) {
   );
 }
 
+// Loading fallback component for Suspense
+function LoadingFallback() {
+  return (
+    <Html center>
+      <div style={{
+        background: 'linear-gradient(135deg, #1E5742 0%, #0A3D2C 100%)',
+        border: '3px solid #D4AF37',
+        borderRadius: '16px',
+        padding: '2rem 3rem',
+        boxShadow: '0 20px 60px rgba(0,0,0,0.5)',
+        color: 'white',
+        textAlign: 'center',
+        minWidth: '300px',
+      }}>
+        <div style={{
+          fontSize: '1.5rem',
+          fontWeight: 'bold',
+          color: '#D4AF37',
+          marginBottom: '1rem',
+        }}>
+          Loading PolyMono Board...
+        </div>
+        <div style={{
+          fontSize: '1rem',
+          color: '#9DBFAE',
+        }}>
+          Please wait while we load the Manhattan Edition
+        </div>
+        <div style={{
+          marginTop: '1.5rem',
+          fontSize: '2rem',
+        }}>
+          🗽
+        </div>
+      </div>
+    </Html>
+  );
+}
+
 const Board = () => {
   const { properties, players } = useGameStore();
   const boardPositions = useMemo(() => calculateBoardPositions(), []);
@@ -688,23 +958,10 @@ const Board = () => {
           <meshStandardMaterial color="#0A3D2C" />
         </mesh>
 
-        {/* Center area */}
-        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0, 0]}>
-          <planeGeometry args={[24, 24]} />
-          <meshStandardMaterial color="#1B5E20" />
-        </mesh>
-
-        {/* Monopoly logo text in center - laying flat */}
-        <Text
-          position={[0, 0.32, 0]}
-          rotation={[-Math.PI / 2, 0, 0]}
-          fontSize={2.5}
-          color="#D4AF37"
-          anchorX="center"
-          anchorY="middle"
-        >
-          MONOPOLY
-        </Text>
+        {/* Main board content with loading fallback */}
+        <Suspense fallback={<LoadingFallback />}>
+          {/* Center board background */}
+          <CenterBoard />
 
         {/* Render all 40 board spaces */}
         {Array.from({ length: 40 }).map((_, index) => {
@@ -751,41 +1008,7 @@ const Board = () => {
           }
           return null;
         })}
-
-        {/* Corner labels - larger and more visible */}
-        <Text
-          position={[15, 1.5, 16]}
-          fontSize={1.2}
-          color="#FFD700"
-          anchorX="center"
-          fontWeight="bold"
-        >
-          ← GO
-        </Text>
-        <Text
-          position={[-15, 1.5, 16]}
-          fontSize={1}
-          color="#FFD700"
-          anchorX="center"
-        >
-          JAIL
-        </Text>
-        <Text
-          position={[-15, 1.5, -16]}
-          fontSize={0.9}
-          color="#FFD700"
-          anchorX="center"
-        >
-          FREE PARKING
-        </Text>
-        <Text
-          position={[15, 1.5, -16]}
-          fontSize={0.9}
-          color="#E31E24"
-          anchorX="center"
-        >
-          GO TO JAIL
-        </Text>
+        </Suspense>
 
         <OrbitControls
           enablePan={true}

@@ -19,7 +19,8 @@
       "Bash(netsh advfirewall firewall show rule:*)",
       "Bash(netsh advfirewall firewall add rule:*)",
       "Bash(cat:*)",
-      "Bash(cmd /c \"for /f \"\"tokens=5\"\" %a in (''netstat -ano ^| findstr :3001'') do taskkill /F /PID %a\")"
+      "Bash(cmd /c \"for /f \"\"tokens=5\"\" %a in (''netstat -ano ^| findstr :3001'') do taskkill /F /PID %a\")",
+      "Bash(dir:*)"
     ],
     "deny": [],
     "ask": []

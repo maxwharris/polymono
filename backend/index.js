@@ -9,10 +9,9 @@ const server = http.createServer(app);
 
 const corsOptions = {
   origin: [
-    process.env.FRONTEND_URL || "http://mp.maxharris.io",
-    "http://localhost:5173",
-    "http://mp.maxharris.io:80",
-    "http://mp.maxharris.io"
+    "https://mp.maxharris.io",
+    "http://mp.maxharris.io",
+    "http://localhost:5173"
   ],
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
   credentials: true
@@ -43,7 +42,7 @@ app.use('/api/trade', tradeRoutes);
 
 // Basic route
 app.get('/', (req, res) => {
-  res.json({ message: 'Monopoly Backend API' });
+  res.json({ message: 'PolyMono: Manhattan Edition Backend API' });
 });
 
 // Socket.io connection

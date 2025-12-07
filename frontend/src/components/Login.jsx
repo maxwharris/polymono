@@ -78,8 +78,13 @@ const Login = () => {
     <div style={styles.container} className="fade-in">
       <div style={styles.loginCard} className="card">
         <div style={styles.header}>
-          <h1 style={styles.title}>MONOPOLY</h1>
-          <p style={styles.subtitle}>Capitalism always wins.</p>
+          <img
+            src="/polymono-logo.png"
+            alt="PolyMono Logo"
+            style={styles.logo}
+          />
+          <h1 style={styles.title}>POLYMONO</h1>
+          <p style={styles.subtitle}>Manhattan Edition</p>
         </div>
 
         <form onSubmit={handleSubmit} style={styles.form}>
@@ -165,6 +170,12 @@ const styles = {
   header: {
     textAlign: 'center',
     marginBottom: '2rem',
+  },
+  logo: {
+    width: '120px',
+    height: 'auto',
+    marginBottom: '1rem',
+    filter: 'drop-shadow(0 4px 8px rgba(0,0,0,0.3))',
   },
   title: {
     fontSize: '3rem',

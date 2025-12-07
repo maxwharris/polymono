@@ -450,7 +450,11 @@ const Game = () => {
       {/* Header */}
       <header style={styles.header}>
         <div style={styles.headerLeft}>
-          <h1 style={styles.headerTitle}>MONOPOLY</h1>
+          <img
+            src="/polymono-logo.png"
+            alt="PolyMono"
+            style={styles.headerLogo}
+          />
           <span style={styles.headerSubtitle}>Live Game</span>
         </div>
         <div style={styles.headerRight}>
@@ -821,7 +825,7 @@ const Game = () => {
         </div>
       )}
 
-      {/* Card Drawn Popup (Chance/Community Chest) */}
+      {/* Card Drawn Popup (Opportunity/Community Fund) */}
       {showCardPopup && drawnCard && (
         <div style={styles.popupOverlay} onClick={() => setShowCardPopup(false)}>
           <div style={{
@@ -843,7 +847,7 @@ const Game = () => {
                 ...styles.popupTitle,
                 color: drawnCard.deckType === 'chance' ? '#FFA500' : '#87CEEB'
               }}>
-                {drawnCard.deckType === 'chance' ? 'CHANCE' : 'COMMUNITY CHEST'}
+                {drawnCard.deckType === 'chance' ? 'OPPORTUNITY' : 'COMMUNITY FUND'}
               </h2>
             </div>
             <div style={styles.popupContent}>
@@ -863,18 +867,18 @@ const Game = () => {
 
 function getSpecialSpaceName(position) {
   const specialSpaces = {
-    0: 'GO - Collect $200',
-    2: 'Community Chest',
-    4: 'Income Tax',
-    7: 'Chance',
-    10: 'Just Visiting Jail',
-    17: 'Community Chest',
-    20: 'Free Parking',
-    22: 'Chance',
-    30: 'Go To Jail',
-    33: 'Community Chest',
-    36: 'Chance',
-    38: 'Luxury Tax',
+    0: "New Year's Eve - Collect $200",
+    2: 'Community Fund',
+    4: 'City Income Tax',
+    7: 'Opportunity',
+    10: 'Rikers',
+    17: 'Community Fund',
+    20: 'Lost and Found',
+    22: 'Opportunity',
+    30: 'Arrested by NYPD',
+    33: 'Community Fund',
+    36: 'Opportunity',
+    38: 'Penthouse Luxury Tax',
   };
   return specialSpaces[position] || `Space ${position}`;
 }
@@ -912,13 +916,9 @@ const styles = {
     alignItems: 'baseline',
     gap: '1rem',
   },
-  headerTitle: {
-    fontSize: '1.75rem',
+  headerLogo: {
+    height: '2.5rem',
     margin: 0,
-    background: 'linear-gradient(135deg, var(--monopoly-gold) 0%, var(--monopoly-dark-gold) 100%)',
-    WebkitBackgroundClip: 'text',
-    WebkitTextFillColor: 'transparent',
-    backgroundClip: 'text',
   },
   headerSubtitle: {
     color: 'var(--monopoly-red)',

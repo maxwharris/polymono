@@ -1,0 +1,187 @@
+Polymono: Manhattan Edition
+
+
+Brown Properties
+
+Alphabet City
+
+Meatpacking District
+
+
+Light Blue Properties
+
+Chinatown
+
+Lower East Side
+
+East Village
+
+
+Pink Properties
+
+Chelsea
+
+Flatiron District
+
+Gramercy Park
+
+
+Orange Properties
+
+Greenwich Village
+
+Hell's Kitchen
+
+Tribeca
+
+
+Red Properties
+
+SoHo
+
+Theater District
+
+Bryant Park
+
+
+Yellow Properties
+
+Lincoln Center
+
+Columbus Circle
+
+Wall Street
+
+
+Green Properties
+
+Upper West Side
+
+Highline
+
+Upper East Side
+
+
+Dark Blue Properties
+
+Billionaire's Row
+
+One World Trade Center
+
+
+Subway Stations (Railroads)
+
+Penn Station
+
+Grand Central Station
+
+Times Square Station
+
+Union Square Station
+
+
+
+Utilities
+
+Con Edison
+
+NYC Steam System
+
+
+Taxes
+
+- City Income Tax
+
+- Penthouse Luxury Tax
+
+
+Corner Spaces
+
+- GO: New Year's Eve
+
+- Jail: Rikers
+
+- Free Parking: Lost and Found
+
+- Go To Jail: Arrested by NYPD
+
+
+Card Decks
+
+- Chance: "Opportunity"
+
+- Community Chest: "Community Fund"
+
+
+Card Decks
+
+
+
+Opportunity:
+
+Advance to Times Square Station. If you pass New Year's Eve, collect $200.
+
+Get out of Rikers Island free. This card may be kept until needed or sold.
+
+You have been elected Mayor. Pay each player $50.
+
+Take a ride on the Staten Island Ferry around the city. Collect $200 when you pass New Year's Eve.
+
+Pay a Jaywalking Fine of $15.
+
+Advance to the nearest Subway Station. If unowned, you may buy it from the Bank. If owned, pay the owner twice the rental to which they are otherwise entitled.
+
+Bank pays you a dividend of $50.
+
+Go back three spaces.
+
+Make general repairs on all your property. For each house pay $25. For each hotel pay $100.
+
+Speeding fine $15.
+
+Take a walk on the High Line. Advance to High Line.
+
+Advance to One World Trade Center.
+
+Your building loan matures. Collect $150.
+
+Advance to Start Spreading the News (Collect $200).
+
+Go directly to Rikers Island. Do not pass Start Spreading the News, do not collect $200.
+
+Advance to Alphabet City. If you pass New Year's Eve, collect $200.
+
+
+"Community Chest" Cards -> "Community Fund" Cards
+
+You fell in a pothole! Collect $100.
+
+You inherit a Rent-Controlled Apartment. Collect $100.
+
+From sale of stock you get $50.
+
+Bank error in your favor. Collect $200.
+
+Pay hospital fees of $100.
+
+You have won second prize in a Broadway talent contest. Collect $10.
+
+Go directly to Rikers Island. Do not pass New Year's Eve, do not collect $200.
+
+Time flies... Advance to New Year's Eve (Collect $200).
+
+Get out of Rikers Island free. This card may be kept until needed or sold.
+
+Pay your Property Tax of $150.
+
+It is your birthday. Collect $10 from every player.
+
+Pay for a private school. Pay $50.
+
+Doctor's fee. Pay $50.
+
+Receive $25 consultancy fee.
+
+You are assessed for street repairs. $40 per house. $115 per hotel.
+
+Life insurance matures. Collect $100.

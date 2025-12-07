@@ -1,11 +1,13 @@
 import { useEffect } from 'react';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import useGameStore from './store/gameStore';
 import Login from './components/Login';
 import Lobby from './components/Lobby';
 import Game from './components/Game';
 import SpectatorView from './components/SpectatorView';
+import Admin from './components/Admin';
 
-function App() {
+function GameRouter() {
   const { user, game, isSpectator, initialize } = useGameStore();
 
   useEffect(() => {
@@ -15,36 +17,34 @@ function App() {
 
   // Show login if no user
   if (!user) {
-    return (
-      <div className="App">
-        <Login />
-      </div>
-    );
+    return <Login />;
   }
 
   // Show spectator view if in spectator mode
   if (isSpectator) {
-    return (
-      <div className="App">
-        <SpectatorView />
-      </div>
-    );
+    return <SpectatorView />;
   }
 
   // Show lobby if game is in lobby status
   if (game?.status === 'lobby') {
-    return (
-      <div className="App">
-        <Lobby />
-      </div>
-    );
+    return <Lobby />;
   }
 
   // Show game if game is in progress
+  return <Game />;
+}
+
+function App() {
   return (
-    <div className="App">
-      <Game />
-    </div>
+    <BrowserRouter>
+      <div className="App">
+        <Routes>
+          <Route path="/admin" element={<Admin />} />
+          <Route path="/" element={<GameRouter />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </div>
+    </BrowserRouter>
   );
 }
 

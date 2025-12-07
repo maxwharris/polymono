@@ -7,36 +7,35 @@ const pool = require('../db');
 const bcrypt = require('bcryptjs');
 
 const newUsers = [
-  { username: 'max', password: 'max', token: 'car' },
-  { username: 'jack', password: 'jack', token: 'hat' },
-  { username: 'youngeun', password: 'youngeun', token: 'dog' },
-  { username: 'seabass', password: 'seabass', token: 'ship' },
-  { username: 'jason', password: 'jason', token: 'thimble' },
-  { username: 'raymond', password: 'raymond', token: 'shoe' }
+  { username: 'max', password: 'max', token: 'taxi' },
+  { username: 'jack', password: 'jack', token: 'pigeon' },
+  { username: 'youngeun', password: 'youngeun', token: 'rat' },
+  { username: 'seabass', password: 'seabass', token: 'subway' },
+  { username: 'jason', password: 'jason', token: 'bull' },
+  { username: 'raymond', password: 'raymond', token: 'empire' }
 ];
 
 async function updateUsers() {
   try {
-    console.log('Updating users...\n');
+    console.log('Updating user token types...\n');
 
-    // Delete all existing users
-    await pool.query('DELETE FROM users');
-    console.log('✓ Removed old users');
-
-    // Create new users
+    // Update existing users' token types
     for (const user of newUsers) {
-      const passwordHash = bcrypt.hashSync(user.password, 10);
-      await pool.query(
-        'INSERT INTO users (username, password_hash, token_type) VALUES ($1, $2, $3)',
-        [user.username, passwordHash, user.token]
+      const result = await pool.query(
+        'UPDATE users SET token_type = $1 WHERE username = $2',
+        [user.token, user.username]
       );
-      console.log(`✓ Created user: ${user.username}`);
+      if (result.rowCount > 0) {
+        console.log(`✓ Updated ${user.username}: token_type = '${user.token}'`);
+      } else {
+        console.log(`⚠️  User ${user.username} not found`);
+      }
     }
 
-    console.log('\n🎮 Users updated successfully!');
-    console.log('\nAvailable accounts:');
+    console.log('\n🎮 User token types updated successfully!');
+    console.log('\nUpdated token assignments:');
     newUsers.forEach(u => {
-      console.log(`  ${u.username} / ${u.password}`);
+      console.log(`  ${u.username}: ${u.token}`);
     });
 
     process.exit(0);

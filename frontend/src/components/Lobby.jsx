@@ -55,8 +55,13 @@ const Lobby = () => {
     <div style={styles.container}>
       <div style={styles.lobbyCard}>
         <div style={styles.header}>
-          <h1 style={styles.title}>MONOPOLY</h1>
-          <h2 style={styles.subtitle}>Game Lobby</h2>
+          <img
+            src="/polymono-logo.png"
+            alt="PolyMono Logo"
+            style={styles.logo}
+          />
+          <h1 style={styles.title}>POLYMONO</h1>
+          <h2 style={styles.subtitle}>Manhattan Edition - Game Lobby</h2>
         </div>
 
         <div style={styles.content}>
@@ -185,6 +190,12 @@ const styles = {
     marginBottom: '2rem',
     borderBottom: '2px solid var(--monopoly-gold)',
     paddingBottom: '1.5rem',
+  },
+  logo: {
+    width: '120px',
+    height: 'auto',
+    marginBottom: '1rem',
+    filter: 'drop-shadow(0 4px 8px rgba(0,0,0,0.3))',
   },
   title: {
     fontSize: '3rem',

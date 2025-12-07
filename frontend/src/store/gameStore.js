@@ -25,7 +25,7 @@ const useGameStore = create((set, get) => ({
   gameLog: [],
   landedSpace: null, // Track the space a player just landed on
   purchasedProperty: null, // Track when a property is purchased
-  drawnCard: null, // Track when a Chance/Community Chest card is drawn
+  drawnCard: null, // Track when an Opportunity/Community Fund card is drawn
 
   // Actions
   setUser: (user) => set({ user }),
@@ -134,7 +134,7 @@ const useGameStore = create((set, get) => ({
           const taxType = landing.type === 'income' ? 'Income Tax' : 'Luxury Tax';
           get().addToGameLog(`💸 ${rollerName} paid $${landing.amount} ${taxType}`);
         } else if (landing.action === 'drew_card') {
-          const deckName = landing.deckType === 'chance' ? 'Chance' : 'Community Chest';
+          const deckName = landing.deckType === 'chance' ? 'Opportunity' : 'Community Fund';
           get().addToGameLog(`🎴 ${landing.player.username} drew ${deckName}: "${landing.card.text}"`);
 
           // Log card effects

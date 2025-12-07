@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import useGameStore from '../store/gameStore';
+import socketService from '../services/socket';
 
 const Trade = ({ isOpen, onClose }) => {
   const { user, players, myPlayer, properties, token } = useGameStore();
@@ -23,6 +24,36 @@ const Trade = ({ isOpen, onClose }) => {
     if (isOpen) {
       fetchTrades();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen]);
+
+  // Listen for trade socket events and refresh trade list
+  useEffect(() => {
+    const socket = socketService.socket;
+    if (!socket) return;
+
+    const handleTradeEvent = () => {
+      // Refresh trades whenever any trade event occurs
+      if (isOpen) {
+        fetchTrades();
+      }
+    };
+
+    // Listen to all trade-related socket events
+    socket.on('trade:new_offer', handleTradeEvent);
+    socket.on('trade:accepted', handleTradeEvent);
+    socket.on('trade:rejected', handleTradeEvent);
+    socket.on('trade:countered', handleTradeEvent);
+    socket.on('trade:cancelled', handleTradeEvent);
+
+    // Cleanup listeners on unmount
+    return () => {
+      socket.off('trade:new_offer', handleTradeEvent);
+      socket.off('trade:accepted', handleTradeEvent);
+      socket.off('trade:rejected', handleTradeEvent);
+      socket.off('trade:countered', handleTradeEvent);
+      socket.off('trade:cancelled', handleTradeEvent);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen]);
 

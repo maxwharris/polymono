@@ -1,13 +1,13 @@
-// Complete Monopoly board data (40 spaces)
+// Complete PolyMono: Manhattan Edition board data (40 spaces)
 // Property values taken from official Monopoly game
 module.exports = [
   // Corner: GO
-  { position: 0, name: 'GO', type: 'special' },
+  { position: 0, name: "New Year's Eve", type: 'special' },
 
   // Brown properties
   {
     position: 1,
-    name: 'Mediterranean Avenue',
+    name: 'Alphabet City',
     type: 'property',
     colorGroup: 'brown',
     price: 60,
@@ -16,12 +16,12 @@ module.exports = [
     mortgageValue: 30
   },
 
-  // Community Chest
-  { position: 2, name: 'Community Chest', type: 'special' },
+  // Community Fund
+  { position: 2, name: 'Community Fund', type: 'special' },
 
   {
     position: 3,
-    name: 'Baltic Avenue',
+    name: 'Meatpacking District',
     type: 'property',
     colorGroup: 'brown',
     price: 60,
@@ -30,13 +30,13 @@ module.exports = [
     mortgageValue: 30
   },
 
-  // Income Tax
-  { position: 4, name: 'Income Tax', type: 'special' },
+  // City Income Tax
+  { position: 4, name: 'City Income Tax', type: 'special' },
 
-  // Railroad
+  // Subway Station
   {
     position: 5,
-    name: 'Reading Railroad',
+    name: 'Penn Station',
     type: 'railroad',
     colorGroup: 'railroad',
     price: 200,
@@ -48,7 +48,7 @@ module.exports = [
   // Light Blue properties
   {
     position: 6,
-    name: 'Oriental Avenue',
+    name: 'Chinatown',
     type: 'property',
     colorGroup: 'lightblue',
     price: 100,
@@ -57,12 +57,12 @@ module.exports = [
     mortgageValue: 50
   },
 
-  // Chance
-  { position: 7, name: 'Chance', type: 'special' },
+  // Opportunity
+  { position: 7, name: 'Opportunity', type: 'special' },
 
   {
     position: 8,
-    name: 'Vermont Avenue',
+    name: 'Lower East Side',
     type: 'property',
     colorGroup: 'lightblue',
     price: 100,
@@ -73,7 +73,7 @@ module.exports = [
 
   {
     position: 9,
-    name: 'Connecticut Avenue',
+    name: 'East Village',
     type: 'property',
     colorGroup: 'lightblue',
     price: 120,
@@ -82,13 +82,13 @@ module.exports = [
     mortgageValue: 60
   },
 
-  // Corner: Jail / Just Visiting
-  { position: 10, name: 'Jail / Just Visiting', type: 'special' },
+  // Corner: Rikers
+  { position: 10, name: 'Rikers', type: 'special' },
 
   // Pink properties
   {
     position: 11,
-    name: 'St. Charles Place',
+    name: 'Chelsea',
     type: 'property',
     colorGroup: 'pink',
     price: 140,
@@ -100,7 +100,7 @@ module.exports = [
   // Utility
   {
     position: 12,
-    name: 'Electric Company',
+    name: 'Con Edison',
     type: 'utility',
     colorGroup: 'utility',
     price: 150,
@@ -111,7 +111,7 @@ module.exports = [
 
   {
     position: 13,
-    name: 'States Avenue',
+    name: 'Flatiron District',
     type: 'property',
     colorGroup: 'pink',
     price: 140,
@@ -122,7 +122,7 @@ module.exports = [
 
   {
     position: 14,
-    name: 'Virginia Avenue',
+    name: 'Gramercy Park',
     type: 'property',
     colorGroup: 'pink',
     price: 160,
@@ -131,10 +131,10 @@ module.exports = [
     mortgageValue: 80
   },
 
-  // Railroad
+  // Subway Station
   {
     position: 15,
-    name: 'Pennsylvania Railroad',
+    name: 'Grand Central Station',
     type: 'railroad',
     colorGroup: 'railroad',
     price: 200,
@@ -146,7 +146,7 @@ module.exports = [
   // Orange properties
   {
     position: 16,
-    name: 'St. James Place',
+    name: 'Greenwich Village',
     type: 'property',
     colorGroup: 'orange',
     price: 180,
@@ -155,12 +155,12 @@ module.exports = [
     mortgageValue: 90
   },
 
-  // Community Chest
-  { position: 17, name: 'Community Chest', type: 'special' },
+  // Community Fund
+  { position: 17, name: 'Community Fund', type: 'special' },
 
   {
     position: 18,
-    name: 'Tennessee Avenue',
+    name: "Hell's Kitchen",
     type: 'property',
     colorGroup: 'orange',
     price: 180,
@@ -171,7 +171,7 @@ module.exports = [
 
   {
     position: 19,
-    name: 'New York Avenue',
+    name: 'Tribeca',
     type: 'property',
     colorGroup: 'orange',
     price: 200,
@@ -180,13 +180,13 @@ module.exports = [
     mortgageValue: 100
   },
 
-  // Corner: Free Parking
-  { position: 20, name: 'Free Parking', type: 'special' },
+  // Corner: Lost and Found
+  { position: 20, name: 'Lost and Found', type: 'special' },
 
   // Red properties
   {
     position: 21,
-    name: 'Kentucky Avenue',
+    name: 'SoHo',
     type: 'property',
     colorGroup: 'red',
     price: 220,
@@ -195,12 +195,12 @@ module.exports = [
     mortgageValue: 110
   },
 
-  // Chance
-  { position: 22, name: 'Chance', type: 'special' },
+  // Opportunity
+  { position: 22, name: 'Opportunity', type: 'special' },
 
   {
     position: 23,
-    name: 'Indiana Avenue',
+    name: 'Theater District',
     type: 'property',
     colorGroup: 'red',
     price: 220,
@@ -211,7 +211,7 @@ module.exports = [
 
   {
     position: 24,
-    name: 'Illinois Avenue',
+    name: 'Bryant Park',
     type: 'property',
     colorGroup: 'red',
     price: 240,
@@ -220,10 +220,10 @@ module.exports = [
     mortgageValue: 120
   },
 
-  // Railroad
+  // Subway Station
   {
     position: 25,
-    name: 'B. & O. Railroad',
+    name: 'Times Square Station',
     type: 'railroad',
     colorGroup: 'railroad',
     price: 200,
@@ -235,7 +235,7 @@ module.exports = [
   // Yellow properties
   {
     position: 26,
-    name: 'Atlantic Avenue',
+    name: 'Lincoln Center',
     type: 'property',
     colorGroup: 'yellow',
     price: 260,
@@ -246,7 +246,7 @@ module.exports = [
 
   {
     position: 27,
-    name: 'Ventnor Avenue',
+    name: 'Columbus Circle',
     type: 'property',
     colorGroup: 'yellow',
     price: 260,
@@ -258,7 +258,7 @@ module.exports = [
   // Utility
   {
     position: 28,
-    name: 'Water Works',
+    name: 'NYC Steam System',
     type: 'utility',
     colorGroup: 'utility',
     price: 150,
@@ -269,7 +269,7 @@ module.exports = [
 
   {
     position: 29,
-    name: 'Marvin Gardens',
+    name: 'Wall Street',
     type: 'property',
     colorGroup: 'yellow',
     price: 280,
@@ -278,13 +278,13 @@ module.exports = [
     mortgageValue: 140
   },
 
-  // Corner: Go to Jail
-  { position: 30, name: 'Go to Jail', type: 'special' },
+  // Corner: Arrested by NYPD
+  { position: 30, name: 'Arrested by NYPD', type: 'special' },
 
   // Green properties
   {
     position: 31,
-    name: 'Pacific Avenue',
+    name: 'Upper West Side',
     type: 'property',
     colorGroup: 'green',
     price: 300,
@@ -295,7 +295,7 @@ module.exports = [
 
   {
     position: 32,
-    name: 'North Carolina Avenue',
+    name: 'Highline',
     type: 'property',
     colorGroup: 'green',
     price: 300,
@@ -304,12 +304,12 @@ module.exports = [
     mortgageValue: 150
   },
 
-  // Community Chest
-  { position: 33, name: 'Community Chest', type: 'special' },
+  // Community Fund
+  { position: 33, name: 'Community Fund', type: 'special' },
 
   {
     position: 34,
-    name: 'Pennsylvania Avenue',
+    name: 'Upper East Side',
     type: 'property',
     colorGroup: 'green',
     price: 320,
@@ -318,10 +318,10 @@ module.exports = [
     mortgageValue: 160
   },
 
-  // Railroad
+  // Subway Station
   {
     position: 35,
-    name: 'Short Line',
+    name: 'Union Square Station',
     type: 'railroad',
     colorGroup: 'railroad',
     price: 200,
@@ -330,13 +330,13 @@ module.exports = [
     mortgageValue: 100
   },
 
-  // Chance
-  { position: 36, name: 'Chance', type: 'special' },
+  // Opportunity
+  { position: 36, name: 'Opportunity', type: 'special' },
 
   // Dark Blue properties
   {
     position: 37,
-    name: 'Park Place',
+    name: "Billionaire's Row",
     type: 'property',
     colorGroup: 'darkblue',
     price: 350,
@@ -345,12 +345,12 @@ module.exports = [
     mortgageValue: 175
   },
 
-  // Luxury Tax
-  { position: 38, name: 'Luxury Tax', type: 'special' },
+  // Penthouse Luxury Tax
+  { position: 38, name: 'Penthouse Luxury Tax', type: 'special' },
 
   {
     position: 39,
-    name: 'Boardwalk',
+    name: 'One World Trade Center',
     type: 'property',
     colorGroup: 'darkblue',
     price: 400,

@@ -54,7 +54,8 @@ async function calculateRent(property, diceRoll = null) {
 
   if (property.property_type === 'property') {
     // Standard property - rent based on house count
-    const rentValues = JSON.parse(property.rent_values);
+    // JSONB fields are already parsed by PostgreSQL/node-postgres
+    const rentValues = property.rent_values;
     let rent = rentValues[property.house_count] || rentValues[0];
 
     // Check if owner owns all properties in color group (doubles rent with no houses)

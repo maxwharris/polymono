@@ -15,6 +15,7 @@ const {
   getPlayerById,
   getAllProperties,
   getPropertyByPosition,
+  updatePlayer,
   logGameAction
 } = require('../db/queries');
 
@@ -31,6 +32,10 @@ class GameController {
   async handleRollDice(userId) {
     const game = await getGame();
     const player = await getPlayerByUserId(userId);
+
+    if (!player) {
+      throw new Error('Player not found. Please join the game first.');
+    }
 
     // Validate it's player's turn
     if (game.current_turn_user_id !== userId) {
@@ -241,6 +246,11 @@ class GameController {
 
   async handleBuyProperty(userId, propertyId) {
     const player = await getPlayerByUserId(userId);
+
+    if (!player) {
+      throw new Error('Player not found. Please join the game first.');
+    }
+
     const property = await getPropertyByPosition(player.position);
 
     if (!property || property.id !== propertyId) {

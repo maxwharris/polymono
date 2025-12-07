@@ -23,6 +23,10 @@ async function resetGame() {
     await pool.query('UPDATE properties SET owner_id = NULL, is_mortgaged = false, house_count = 0');
     console.log('✓ Reset all properties');
 
+    // Delete all trades (must come before deleting players due to foreign key constraint)
+    await pool.query('DELETE FROM trades');
+    console.log('✓ Cleared all trades');
+
     // Delete all players
     await pool.query('DELETE FROM players');
     console.log('✓ Removed all players');

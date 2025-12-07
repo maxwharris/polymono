@@ -1,5 +1,5 @@
 /**
- * Chance and Community Chest card mechanics for Monopoly
+ * Opportunity and Community Fund card mechanics for PolyMono: Manhattan Edition
  */
 
 const { movePlayer } = require('./movement');
@@ -7,41 +7,44 @@ const { sendToJail } = require('./jail');
 const { updatePlayer } = require('../../db/queries');
 
 const CHANCE_CARDS = [
-  { type: 'move', text: 'Advance to GO (Collect $200)', action: 'position', position: 0 },
-  { type: 'move', text: 'Advance to Illinois Ave', action: 'position', position: 24 },
-  { type: 'move', text: 'Advance to St. Charles Place', action: 'position', position: 11 },
-  { type: 'move', text: 'Advance token to nearest Utility', action: 'nearest_utility' },
-  { type: 'move', text: 'Advance token to nearest Railroad', action: 'nearest_railroad' },
-  { type: 'move_back', text: 'Go Back 3 Spaces', spaces: 3 },
-  { type: 'jail', text: 'Go to Jail', action: 'jail' },
-  { type: 'jail_free', text: 'Get Out of Jail Free' },
-  { type: 'money', text: 'Bank pays you dividend of $50', amount: 50 },
-  { type: 'money', text: 'Pay poor tax of $15', amount: -15 },
-  { type: 'move', text: 'Take a trip to Reading Railroad', action: 'position', position: 5 },
-  { type: 'money', text: 'You have been elected Chairman of the Board. Pay each player $50', amount: -50, toAll: true },
+  { type: 'move', text: "Advance to New Year's Eve (Collect $200)", action: 'position', position: 0 },
+  { type: 'move', text: 'Advance to Bryant Park', action: 'position', position: 24 },
+  { type: 'move', text: 'Advance to Chelsea', action: 'position', position: 11 },
+  { type: 'move', text: 'Advance token to nearest Subway Station. If unowned, you may buy it from the Bank. If owned, pay owner twice the rental to which they are otherwise entitled', action: 'nearest_railroad' },
+  { type: 'move', text: 'Advance token to nearest Subway Station. If unowned, you may buy it from the Bank. If owned, pay owner twice the rental to which they are otherwise entitled', action: 'nearest_railroad' },
+  { type: 'move_back', text: 'Go back three spaces', spaces: 3 },
+  { type: 'jail', text: 'Go directly to Rikers Island. Do not pass New Year\'s Eve, do not collect $200', action: 'jail' },
+  { type: 'jail_free', text: 'Get out of Rikers Island free. This card may be kept until needed or sold' },
+  { type: 'money', text: 'Bank pays you a dividend of $50', amount: 50 },
+  { type: 'money', text: 'Speeding fine $15', amount: -15 },
+  { type: 'move', text: 'Advance to Times Square Station. If you pass New Year\'s Eve, collect $200', action: 'position', position: 25 },
+  { type: 'money', text: 'You have been elected Mayor. Pay each player $50', amount: -50, toAll: true },
   { type: 'money', text: 'Your building loan matures. Collect $150', amount: 150 },
-  { type: 'money', text: 'You have won a crossword competition. Collect $100', amount: 100 },
-  { type: 'repairs', text: 'Make general repairs on all your property. $25 per house, $100 per hotel', house: 25, hotel: 100 },
-  { type: 'move', text: 'Advance to Boardwalk', action: 'position', position: 39 }
+  { type: 'money', text: 'Pay a Jaywalking Fine of $15', amount: -15 },
+  { type: 'repairs', text: 'Make general repairs on all your property. For each house pay $25. For each hotel pay $100', house: 25, hotel: 100 },
+  { type: 'move', text: 'Advance to One World Trade Center', action: 'position', position: 39 },
+  { type: 'move', text: 'Take a walk on the High Line. Advance to Highline', action: 'position', position: 32 },
+  { type: 'move', text: 'Advance to Alphabet City. If you pass New Year\'s Eve, collect $200', action: 'position', position: 1 }
 ];
 
 const COMMUNITY_CHEST_CARDS = [
-  { type: 'move', text: 'Advance to GO (Collect $200)', action: 'position', position: 0 },
+  { type: 'move', text: "Time flies... Advance to New Year's Eve (Collect $200)", action: 'position', position: 0 },
   { type: 'money', text: 'Bank error in your favor. Collect $200', amount: 200 },
-  { type: 'money', text: 'Doctor\'s fees. Pay $50', amount: -50 },
+  { type: 'money', text: 'Doctor\'s fee. Pay $50', amount: -50 },
   { type: 'money', text: 'From sale of stock you get $50', amount: 50 },
-  { type: 'jail_free', text: 'Get Out of Jail Free' },
-  { type: 'jail', text: 'Go to Jail' },
-  { type: 'money', text: 'Grand Opera Night. Collect $50 from every player', amount: 50, fromAll: true },
-  { type: 'money', text: 'Holiday Fund matures. Receive $100', amount: 100 },
-  { type: 'money', text: 'Income tax refund. Collect $20', amount: 20 },
+  { type: 'jail_free', text: 'Get out of Rikers Island free. This card may be kept until needed or sold' },
+  { type: 'jail', text: 'Go directly to Rikers Island. Do not pass New Year\'s Eve, do not collect $200' },
+  { type: 'money', text: 'It is your birthday. Collect $10 from every player', amount: 10, fromAll: true },
+  { type: 'money', text: 'You inherit a Rent-Controlled Apartment. Collect $100', amount: 100 },
+  { type: 'money', text: 'You fell in a pothole! Collect $100', amount: 100 },
   { type: 'money', text: 'It is your birthday. Collect $10 from each player', amount: 10, fromAll: true },
   { type: 'money', text: 'Life insurance matures. Collect $100', amount: 100 },
-  { type: 'money', text: 'Hospital fees. Pay $100', amount: -100 },
-  { type: 'money', text: 'School fees. Pay $150', amount: -150 },
+  { type: 'money', text: 'Pay hospital fees of $100', amount: -100 },
+  { type: 'money', text: 'Pay for a private school. Pay $50', amount: -50 },
   { type: 'money', text: 'Receive $25 consultancy fee', amount: 25 },
-  { type: 'repairs', text: 'You are assessed for street repairs. $40 per house, $115 per hotel', house: 40, hotel: 115 },
-  { type: 'money', text: 'You have won second prize in a beauty contest. Collect $10', amount: 10 }
+  { type: 'repairs', text: 'You are assessed for street repairs. $40 per house. $115 per hotel', house: 40, hotel: 115 },
+  { type: 'money', text: 'You have won second prize in a Broadway talent contest. Collect $10', amount: 10 },
+  { type: 'money', text: 'Pay your Property Tax of $150', amount: -150 }
 ];
 
 async function drawCard(player, deckType, allPlayers, allProperties) {
