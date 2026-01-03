@@ -2,7 +2,7 @@ import { useState } from 'react';
 import useGameStore from '../store/gameStore';
 
 // Backend API URL - use environment variable or default to domain
-const API_URL = import.meta.env.VITE_BACKEND_URL || 'http://mp.maxharris.io:3001';
+const API_URL = import.meta.env.VITE_BACKEND_URL || '';
 
 const Login = () => {
   const [username, setUsername] = useState('');
