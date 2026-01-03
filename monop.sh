@@ -6,7 +6,7 @@
 set -e
 
 # Change to project directory
-cd /var/www/monop
+cd /var/www/polymono
 
 echo "========================================="
 echo "  Polymono Production Deployment"
@@ -40,7 +40,7 @@ echo "========================================="
 echo "  Deploying Backend"
 echo "========================================="
 
-cd /var/www/monop/backend
+cd /var/www/polymono/backend
 
 echo "Installing backend dependencies..."
 npm install --production
@@ -69,7 +69,7 @@ echo "========================================="
 echo "  Deploying Frontend"
 echo "========================================="
 
-cd /var/www/monop/frontend
+cd /var/www/polymono/frontend
 
 echo "Installing frontend dependencies..."
 npm install
@@ -81,8 +81,8 @@ print_status "Frontend build complete"
 
 # Set proper permissions for Nginx
 echo "Setting permissions..."
-sudo chown -R www-data:www-data /var/www/monop/frontend/dist
-sudo chmod -R 755 /var/www/monop/frontend/dist
+sudo chown -R www-data:www-data /var/www/polymono/frontend/dist
+sudo chmod -R 755 /var/www/polymono/frontend/dist
 print_status "Permissions set"
 
 # Reload Nginx
