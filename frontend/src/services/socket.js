@@ -1,92 +1,60 @@
+// The one socket.io connection. The store owns it (see store/gameStore.js): it connects with the JWT,
+// registers its handlers, and reconnects forever. The client never emits; all actions go over HTTP.
 import { io } from 'socket.io-client';
+import { API_URL } from '../lib/api';
 
-class SocketService {
-  constructor() {
-    this.socket = null;
-    this.isConnecting = false;
-  }
+let socket = null;
 
-  connect(user, token) {
-    // If already connected, return existing socket
-    if (this.socket?.connected) {
-      console.log('Reusing existing socket connection');
-      return this.socket;
-    }
-
-    // If currently connecting, wait and return
-    if (this.isConnecting) {
-      console.log('Connection already in progress');
-      return this.socket;
-    }
-
-    this.isConnecting = true;
-
-    // Disconnect old socket if it exists but isn't connected
-    if (this.socket) {
-      this.socket.removeAllListeners();
-      this.socket.disconnect();
-    }
-
-    // Use environment variable or fallback to current origin (for proxy)
-    const backendUrl = import.meta.env.VITE_BACKEND_URL || window.location.origin;
-
-    this.socket = io(backendUrl, {
-      auth: { token },
-      transports: ['websocket', 'polling'],
-      reconnection: true,
-      reconnectionDelay: 1000,
-      reconnectionDelayMax: 5000,
-      reconnectionAttempts: 5
-    });
-
-    this.socket.on('connect', () => {
-      console.log('Connected to server');
-      this.isConnecting = false;
-      this.socket.emit('user:authenticate', {
-        userId: user.id,
-        username: user.username
-      });
-    });
-
-    this.socket.on('disconnect', () => {
-      console.log('Disconnected from server');
-      this.isConnecting = false;
-    });
-
-    this.socket.on('connect_error', (error) => {
-      console.error('Connection error:', error);
-      this.isConnecting = false;
-    });
-
-    return this.socket;
-  }
-
-  disconnect() {
-    if (this.socket) {
-      this.socket.removeAllListeners();
-      this.socket.disconnect();
-      this.socket = null;
-      this.isConnecting = false;
-    }
-  }
-
-  on(event, callback) {
-    if (this.socket) {
-      this.socket.on(event, callback);
-    }
-  }
-
-  emit(event, data) {
-    if (this.socket) {
-      this.socket.emit(event, data);
-    }
-  }
-
-  off(event) {
-    if (this.socket) {
-      this.socket.off(event);
-    }
-  }
+/** Opens a fresh connection with `handlers` ({ eventName: fn }), closing any previous one. */
+export function connectSocket(token, handlers = {}) {
+  disconnectSocket();
+  const options = {
+    auth: { token },
+    reconnection: true,
+    reconnectionAttempts: Infinity,
+    reconnectionDelay: 1000,
+    reconnectionDelayMax: 10000
+  };
+  socket = API_URL ? io(API_URL, options) : io(options);
+  for (const [event, handler] of Object.entries(handlers)) socket.on(event, handler);
+  return socket;
 }
 
-export default new SocketService();
+export function disconnectSocket() {
+  if (!socket) return;
+  socket.removeAllListeners();
+  socket.disconnect();
+  socket = null;
+}
+
+// A phone that slept may hold a dead connection or have paused its retries: nudge it.
+export function wakeSocket() {
+  if (socket && !socket.connected) socket.connect();
+}
+
+// A new token for this session (password changed): later reconnects must not present the old one.
+export function setSocketToken(token) {
+  if (socket) socket.auth = { token };
+}
+
+export function isSocketConnected() {
+  return !!socket?.connected;
+}
+
+// Backwards-compatible object for older components (prefer the store).
+export default {
+  connect: connectSocket,
+  disconnect: disconnectSocket,
+  on(event, handler) {
+    socket?.on(event, handler);
+  },
+  off(event, handler) {
+    socket?.off(event, handler);
+  },
+  emit(event, data) {
+    socket?.emit(event, data);
+  },
+  get socket() {
+    return socket;
+  }
+};

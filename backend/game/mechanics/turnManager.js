@@ -1,121 +1,67 @@
 /**
- * Turn management for Monopoly
+ * Turn order, turn phases and the end of the game. Every function takes the transaction context `t`
+ * (see gameController.js) and mutates t.ts, the turn state persisted in game.turn_state.
  */
 
-const { getAllPlayers, updateGame, getGame, logGameAction, getPlayerByUserId } = require('../../db/queries');
-const { tryGetOutOfJail } = require('./jail');
+const q = require('../../db/queries');
 
-class TurnManager {
-  constructor() {
-    this.turnTimeout = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
-    this.io = null; // Socket.io instance for broadcasting
-  }
+function freshTurnState() {
+  return {
+    phase: 'roll',            // roll | buy | debt | end
+    rolled: false,
+    doubles: 0,
+    lastRoll: null,
+    extraRoll: false,         // rolled doubles and may roll again
+    pendingPropertyId: null,  // unowned property waiting for buy/decline
+    debts: []                 // [{ creditorId (player id) | null for the bank, amount, reason }]
+  };
+}
 
-  setIO(io) {
-    this.io = io;
-  }
+function normalizeTurnState(ts) {
+  return { ...freshTurnState(), ...(ts || {}), debts: Array.isArray(ts?.debts) ? ts.debts : [] };
+}
 
-  async startTurn(userId) {
-    const deadline = new Date(Date.now() + this.turnTimeout);
+// Works out what the current player must do next from the turn state.
+function settle(ts) {
+  if (ts.debts.length) ts.phase = 'debt';
+  else if (ts.pendingPropertyId) ts.phase = 'buy';
+  else if (!ts.rolled || ts.extraRoll) ts.phase = 'roll';
+  else ts.phase = 'end';
+  return ts.phase;
+}
 
-    await updateGame({
-      currentTurnUserId: userId,
-      turnDeadline: deadline
-    });
+async function startTurn(t, player) {
+  const hours = Number(t.game.settings?.turn_hours) || 0;
+  const deadline = hours > 0 ? new Date(Date.now() + hours * 3600 * 1000) : null;
+  t.game = await q.updateGame(t.db, { current_turn_user_id: player.user_id, turn_deadline: deadline });
+  t.ts = freshTurnState();
+  const where = player.is_in_jail ? ' (in Rikers)' : '';
+  await t.log('turn', player, { deadline }, `It's ${player.username}'s turn${where}`);
+}
 
-    await logGameAction(null, 'turn_start', { userId, deadline });
-
-    // Check if player is in jail and has a Get Out of Jail Free card
-    const player = await getPlayerByUserId(userId);
-    let usedJailCard = false;
-
-    if (player && player.is_in_jail && player.get_out_of_jail_cards > 0) {
-      try {
-        const cardResult = await tryGetOutOfJail(player, 'card');
-        await logGameAction(player.id, 'used_jail_card', { cardsRemaining: cardResult.cardsRemaining });
-        usedJailCard = true;
-
-        // Broadcast jail card usage to all clients
-        if (this.io) {
-          this.io.emit('game:jail_card_used', {
-            user_id: userId,
-            username: player.username,
-            cardsRemaining: cardResult.cardsRemaining
-          });
-        }
-      } catch (error) {
-        console.error('Error using jail card on turn start:', error);
-      }
+// Hands the turn to the next player in seat order who is still in the game.
+async function advanceTurn(t) {
+  const players = await q.getAllPlayers(t.db);
+  const seat = players.findIndex(p => p.user_id === t.game.current_turn_user_id);
+  for (let i = 1; i <= players.length; i++) {
+    const next = players[(seat + i + players.length) % players.length];
+    if (!next.is_bankrupt) {
+      return startTurn(t, next);
     }
-
-    return { userId, deadline, usedJailCard };
-  }
-
-  async endTurn() {
-    const game = await getGame();
-    const players = await getAllPlayers();
-
-    // Filter out bankrupt players
-    const activePlayers = players.filter(p => !p.is_bankrupt);
-
-    if (activePlayers.length === 1) {
-      // Game over! Only one player remaining
-      await updateGame({
-        status: 'completed',
-        currentTurnUserId: null,
-        completedAt: new Date()
-      });
-
-      return {
-        gameOver: true,
-        winner: activePlayers[0]
-      };
-    }
-
-    if (activePlayers.length === 0) {
-      // No active players (shouldn't happen, but handle gracefully)
-      await updateGame({
-        status: 'completed',
-        currentTurnUserId: null
-      });
-
-      return {
-        gameOver: true,
-        winner: null
-      };
-    }
-
-    // Find current player index
-    const currentIndex = activePlayers.findIndex(
-      p => p.user_id === game.current_turn_user_id
-    );
-
-    // Move to next player (circular)
-    const nextIndex = (currentIndex + 1) % activePlayers.length;
-    const nextPlayer = activePlayers[nextIndex];
-
-    await this.startTurn(nextPlayer.user_id);
-
-    return {
-      gameOver: false,
-      nextPlayerId: nextPlayer.user_id,
-      nextPlayer: nextPlayer
-    };
-  }
-
-  async handleTimeout(userId) {
-    // Auto-end turn when player times out
-    await logGameAction(null, 'turn_timeout', { userId });
-    return await this.endTurn();
-  }
-
-  async getCurrentTurn() {
-    const game = await getGame();
-    return {
-      currentPlayerId: game.current_turn_user_id,
-      deadline: game.turn_deadline
-    };
   }
 }
 
-module.exports = new TurnManager();
+async function endGame(t, winner) {
+  t.game = await q.updateGame(t.db, {
+    status: 'completed',
+    completed_at: new Date(),
+    current_turn_user_id: null,
+    turn_deadline: null,
+    winner_user_id: winner ? winner.user_id : null
+  });
+  t.ts = { ...freshTurnState(), phase: 'over' };
+  await t.log('game_over', winner, { winnerUserId: winner?.user_id ?? null },
+    winner ? `${winner.username} wins the game!` : 'Game over');
+}
+
+module.exports = { freshTurnState, normalizeTurnState, settle, startTurn, advanceTurn, endGame };

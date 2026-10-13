@@ -1,81 +1,36 @@
 /**
- * Reset game state
- * Clears all players, properties ownership, game actions, and chat
- * Resets game to initial state
+ * Reset the game: back to the lobby with every player's seat kept, all properties returned to the bank,
+ * trades and the event log cleared. Chat is kept.
+ *
+ * Asks the running server to do it (so connected clients update at once), signing a short-lived admin
+ * token with JWT_SECRET from .env. Usage on the box: node scripts/resetGame.js
  */
 
+require('dotenv').config({ path: require('path').join(__dirname, '..', '.env') });
+const jwt = require('jsonwebtoken');
 const pool = require('../db');
-const io = require('socket.io-client');
 
 async function resetGame() {
-  try {
-    console.log('Resetting game state...\n');
+  const adminName = (process.env.ADMIN_USERS || '').split(',')[0].trim();
+  if (!adminName) throw new Error('Set ADMIN_USERS in backend/.env');
+  const result = await pool.query('SELECT id, username, token_version FROM users WHERE LOWER(username) = LOWER($1)', [adminName]);
+  await pool.end();
+  const admin = result.rows[0];
+  if (!admin) throw new Error(`Admin user "${adminName}" not found`);
 
-    // Delete all game chat
-    await pool.query('DELETE FROM game_chat');
-    console.log('✓ Cleared chat messages');
-
-    // Delete all game actions
-    await pool.query('DELETE FROM game_actions');
-    console.log('✓ Cleared game actions log');
-
-    // Reset property ownership (must come before deleting players due to foreign key constraint)
-    await pool.query('UPDATE properties SET owner_id = NULL, is_mortgaged = false, house_count = 0');
-    console.log('✓ Reset all properties');
-
-    // Delete all trades (must come before deleting players due to foreign key constraint)
-    await pool.query('DELETE FROM trades');
-    console.log('✓ Cleared all trades');
-
-    // Delete all players
-    await pool.query('DELETE FROM players');
-    console.log('✓ Removed all players');
-
-    // Reset game state to lobby
-    await pool.query(`
-      UPDATE game SET
-        current_turn_user_id = NULL,
-        turn_deadline = NULL,
-        status = 'lobby',
-        started_at = NULL,
-        completed_at = NULL
-      WHERE id = 1
-    `);
-    console.log('✓ Reset game state to lobby');
-
-    // Notify all connected clients to return to login
-    try {
-      const socket = io('http://localhost:3001');
-      socket.on('connect', () => {
-        socket.emit('admin:game_reset');
-        console.log('✓ Broadcast game reset to all clients');
-        socket.disconnect();
-        console.log('\n🎮 Game reset complete! Players can join the lobby.');
-        process.exit(0);
-      });
-
-      socket.on('connect_error', (error) => {
-        console.log('⚠️  Could not broadcast to clients (server may not be running)');
-        console.log('\n🎮 Game reset complete! Players can join the lobby.');
-        process.exit(0);
-      });
-
-      // Timeout after 2 seconds if no connection
-      setTimeout(() => {
-        socket.disconnect();
-        console.log('⚠️  Socket connection timeout');
-        console.log('\n🎮 Game reset complete! Players can join the lobby.');
-        process.exit(0);
-      }, 2000);
-    } catch (error) {
-      console.log('⚠️  Could not broadcast to clients:', error.message);
-      console.log('\n🎮 Game reset complete! Players can join the lobby.');
-      process.exit(0);
-    }
-  } catch (error) {
-    console.error('Error resetting game:', error);
-    process.exit(1);
-  }
+  const token = jwt.sign({ id: admin.id, username: admin.username, tv: admin.token_version }, process.env.JWT_SECRET, { expiresIn: '1m' });
+  const port = process.env.PORT || 3002;
+  const response = await fetch(`http://localhost:${port}/api/admin/reset-game`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` }
+  });
+  const body = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(body.message || `Server answered ${response.status}`);
+  console.log('Game reset: everyone is back in the lobby.');
 }
 
-resetGame();
+resetGame().catch(error => {
+  console.error('Reset failed:', error.message);
+  console.error('Is the server running? (pm2 status monop-backend)');
+  process.exit(1);
+});

@@ -1,250 +1,124 @@
 /**
- * Property system mechanics for Monopoly
+ * Property rules: rent, building, selling and mortgaging. Pure functions over property rows.
  */
 
-const { updateProperty, updatePlayer, getAllProperties } = require('../../db/queries');
+const { RAILROAD_RENT, HOUSE_SUPPLY, HOTEL_SUPPLY } = require('../board');
+const { GameError } = require('../errors');
 
-async function canBuyProperty(player, property) {
-  return (
-    property.owner_id === null &&
-    player.money >= property.purchase_price &&
-    !player.is_bankrupt &&
-    !property.is_mortgaged
-  );
+function groupOf(property, allProperties) {
+  return allProperties.filter(p => p.property_type === 'property' && p.color_group === property.color_group);
 }
 
-async function purchaseProperty(player, property) {
-  // Provide specific error messages
-  if (property.owner_id !== null) {
-    throw new Error('Property is already owned');
-  }
-  if (player.money < property.purchase_price) {
-    throw new Error(`Insufficient funds. Need $${property.purchase_price}, have $${player.money}`);
-  }
-  if (player.is_bankrupt) {
-    throw new Error('Cannot purchase property while bankrupt');
-  }
-  if (property.is_mortgaged) {
-    throw new Error('Property is mortgaged');
-  }
-
-  // Deduct money from player
-  await updatePlayer(player.id, {
-    money: player.money - property.purchase_price
-  });
-
-  // Assign ownership
-  await updateProperty(property.id, {
-    ownerId: player.id
-  });
-
-  return {
-    success: true,
-    newMoney: player.money - property.purchase_price
-  };
+function ownsWholeGroup(ownerId, property, allProperties) {
+  return ownerId != null && groupOf(property, allProperties).every(p => p.owner_id === ownerId);
 }
 
-async function calculateRent(property, diceRoll = null) {
-  if (property.is_mortgaged || property.owner_id === null) {
-    return 0;
-  }
-
-  // Get all properties to check ownership in groups
-  const allProperties = await getAllProperties();
+/**
+ * Rent owed for landing on `property`. rent_values for streets is [base, full set, 1-4 houses, hotel].
+ * Utilities return multiplier * diceTotal; with no diceTotal they return the multiplier itself.
+ * `multiplier` doubles railroad rent for the "nearest Subway Station" card.
+ */
+function calculateRent(property, allProperties, { diceTotal = null, multiplier = 1, utilityMultiplier = null } = {}) {
+  if (property.owner_id == null || property.is_mortgaged) return 0;
 
   if (property.property_type === 'property') {
-    // Standard property - rent based on house count
-    // JSONB fields are already parsed by PostgreSQL/node-postgres
-    const rentValues = property.rent_values;
-    let rent = rentValues[property.house_count] || rentValues[0];
-
-    // Check if owner owns all properties in color group (doubles rent with no houses)
-    if (property.house_count === 0 && property.color_group) {
-      const colorGroupProperties = allProperties.filter(
-        p => p.color_group === property.color_group
-      );
-      const ownsAll = colorGroupProperties.every(p => p.owner_id === property.owner_id);
-
-      if (ownsAll) {
-        rent = rent * 2; // Double rent for monopoly
-      }
-    }
-
-    return rent;
+    const rents = property.rent_values;
+    if (property.house_count > 0) return rents[property.house_count + 1];
+    return ownsWholeGroup(property.owner_id, property, allProperties) ? rents[1] : rents[0];
   }
 
   if (property.property_type === 'railroad') {
-    // Count how many railroads the owner has
-    const railroads = allProperties.filter(
-      p => p.property_type === 'railroad' && p.owner_id === property.owner_id
-    );
-    const count = railroads.length;
-
-    const rentValues = [25, 50, 100, 200];
-    return rentValues[count - 1] || 0;
+    const owned = allProperties.filter(p => p.property_type === 'railroad' && p.owner_id === property.owner_id).length;
+    return (RAILROAD_RENT[owned - 1] || 0) * multiplier;
   }
 
   if (property.property_type === 'utility') {
-    // Count how many utilities the owner has
-    const utilities = allProperties.filter(
-      p => p.property_type === 'utility' && p.owner_id === property.owner_id
-    );
-    const count = utilities.length;
-
-    // If dice roll provided, use it; otherwise return multiplier
-    const multiplier = count === 2 ? 10 : 4;
-
-    if (diceRoll !== null) {
-      return multiplier * diceRoll;
-    }
-
-    return multiplier; // Return multiplier if no dice roll provided
+    const owned = allProperties.filter(p => p.property_type === 'utility' && p.owner_id === property.owner_id).length;
+    const m = utilityMultiplier || (owned === 2 ? 10 : 4);
+    return diceTotal == null ? m : m * diceTotal;
   }
 
   return 0;
 }
 
-async function payRent(payer, owner, amount) {
-  // Deduct from payer
-  await updatePlayer(payer.id, {
-    money: payer.money - amount
-  });
+function buildingSupply(allProperties) {
+  let houses = 0;
+  let hotels = 0;
+  for (const p of allProperties) {
+    if (p.house_count === 5) hotels++;
+    else houses += p.house_count || 0;
+  }
+  return { houses: HOUSE_SUPPLY - houses, hotels: HOTEL_SUPPLY - hotels };
+}
 
-  // Add to owner
-  await updatePlayer(owner.id, {
-    money: owner.money + amount
-  });
+function assertOwner(player, property) {
+  if (property.owner_id !== player.id) throw new GameError(`You do not own ${property.name}`);
+}
 
-  return {
-    success: true,
-    payerNewMoney: payer.money - amount,
-    ownerNewMoney: owner.money + amount
-  };
+/** Throws unless one more house (or the hotel) can go on `property`. Returns the cost. */
+function checkBuild(player, property, allProperties) {
+  if (property.property_type !== 'property') throw new GameError('You can only build on streets');
+  assertOwner(player, property);
+  const group = groupOf(property, allProperties);
+  if (!group.every(p => p.owner_id === player.id)) throw new GameError(`You need every ${property.color_group} property to build`);
+  if (group.some(p => p.is_mortgaged)) throw new GameError('Unmortgage the whole color group before building');
+  if (property.house_count >= 5) throw new GameError(`${property.name} already has a hotel`);
+  const min = Math.min(...group.map(p => p.house_count));
+  if (property.house_count > min) throw new GameError('Build evenly: add to the properties with fewer houses first');
+
+  const supply = buildingSupply(allProperties);
+  if (property.house_count === 4 && supply.hotels <= 0) throw new GameError('The bank has no hotels left');
+  if (property.house_count < 4 && supply.houses <= 0) throw new GameError('The bank has no houses left');
+  if (player.money < property.house_cost) throw new GameError(`You need $${property.house_cost} to build here`);
+  return property.house_cost;
 }
 
 /**
- * Check if player can build houses/hotels on a property
+ * Throws unless a building can be sold from `property`. Returns { refund, houseCount } (the new count).
+ * Breaking a hotel puts four houses back on the board; if the bank has fewer, the hotel comes down to as
+ * many houses as it has (possibly none) and every building removed is refunded.
  */
-async function canBuildOnProperty(player, property) {
-  // Can only build on standard properties (not railroads/utilities)
-  if (property.property_type !== 'property') {
-    return { canBuild: false, reason: 'Cannot build on railroads or utilities' };
-  }
-
-  // Must own the property
-  if (property.owner_id !== player.id) {
-    return { canBuild: false, reason: 'You do not own this property' };
-  }
-
-  // Cannot build on mortgaged property
-  if (property.is_mortgaged) {
-    return { canBuild: false, reason: 'Cannot build on mortgaged property' };
-  }
-
-  // Must own all properties in color group (monopoly)
-  const allProperties = await getAllProperties();
-  const colorGroupProperties = allProperties.filter(
-    p => p.color_group === property.color_group && p.property_type === 'property'
-  );
-  const ownsAll = colorGroupProperties.every(p => p.owner_id === player.id);
-
-  if (!ownsAll) {
-    return { canBuild: false, reason: 'Must own all properties in color group' };
-  }
-
-  // Cannot build on any property in the group if any are mortgaged
-  const anyMortgaged = colorGroupProperties.some(p => p.is_mortgaged);
-  if (anyMortgaged) {
-    return { canBuild: false, reason: 'Cannot build while any property in group is mortgaged' };
-  }
-
-  // Check even building rule - can't have more than 1 house difference
-  const houseCounts = colorGroupProperties.map(p => p.house_count);
-  const minHouses = Math.min(...houseCounts);
-
-  if (property.house_count > minHouses) {
-    return { canBuild: false, reason: 'Must build evenly across color group' };
-  }
-
-  // Cannot build more than hotel (5)
-  if (property.house_count >= 5) {
-    return { canBuild: false, reason: 'Property already has a hotel' };
-  }
-
-  return { canBuild: true, colorGroupProperties };
+function checkSellBuilding(player, property, allProperties) {
+  assertOwner(player, property);
+  if (!property.house_count) throw new GameError(`${property.name} has no buildings`);
+  const group = groupOf(property, allProperties);
+  const max = Math.max(...group.map(p => p.house_count));
+  if (property.house_count < max) throw new GameError('Sell evenly: remove from the properties with more houses first');
+  const houseCount = property.house_count === 5
+    ? Math.min(4, buildingSupply(allProperties).houses)
+    : property.house_count - 1;
+  return { refund: (property.house_count - houseCount) * Math.floor(property.house_cost / 2), houseCount };
 }
 
-/**
- * Purchase houses or hotel for a property
- */
-async function purchaseHouses(player, property, count) {
-  const buildCheck = await canBuildOnProperty(player, property);
-
-  if (!buildCheck.canBuild) {
-    throw new Error(buildCheck.reason);
+function checkMortgage(player, property, allProperties) {
+  assertOwner(player, property);
+  if (property.is_mortgaged) throw new GameError(`${property.name} is already mortgaged`);
+  if (property.property_type === 'property' && groupOf(property, allProperties).some(p => p.house_count > 0)) {
+    throw new GameError('Sell the buildings in this color group first');
   }
+  return property.mortgage_value;
+}
 
-  // Validate count
-  if (count < 1 || count > 5) {
-    throw new Error('Can only buy 1-5 houses at a time');
-  }
+function unmortgageCost(property) {
+  return Math.ceil(property.mortgage_value * 1.1);
+}
 
-  const newHouseCount = property.house_count + count;
-  if (newHouseCount > 5) {
-    throw new Error(`Cannot build ${count} houses. Would exceed hotel limit.`);
-  }
-
-  // Check even building for each house
-  const { colorGroupProperties } = buildCheck;
-  const houseCounts = colorGroupProperties.map(p =>
-    p.id === property.id ? property.house_count : p.house_count
-  );
-
-  for (let i = 0; i < count; i++) {
-    const currentCount = property.house_count + i;
-    const minInGroup = Math.min(...houseCounts);
-
-    if (currentCount > minInGroup) {
-      throw new Error(`Must build evenly. Other properties in group have ${minInGroup} houses.`);
-    }
-
-    // Update the count for next iteration
-    houseCounts[colorGroupProperties.findIndex(p => p.id === property.id)] = currentCount + 1;
-  }
-
-  // Calculate cost
-  const costPerHouse = property.house_cost;
-  const totalCost = costPerHouse * count;
-
-  if (player.money < totalCost) {
-    throw new Error(`Insufficient funds. Need $${totalCost}, have $${player.money}`);
-  }
-
-  // Deduct money from player
-  await updatePlayer(player.id, {
-    money: player.money - totalCost
-  });
-
-  // Update property
-  await updateProperty(property.id, {
-    houseCount: newHouseCount
-  });
-
-  return {
-    success: true,
-    housesAdded: count,
-    newHouseCount,
-    cost: totalCost,
-    newMoney: player.money - totalCost,
-    isHotel: newHouseCount === 5
-  };
+function checkUnmortgage(player, property) {
+  assertOwner(player, property);
+  if (!property.is_mortgaged) throw new GameError(`${property.name} is not mortgaged`);
+  const cost = unmortgageCost(property);
+  if (player.money < cost) throw new GameError(`You need $${cost} to unmortgage ${property.name}`);
+  return cost;
 }
 
 module.exports = {
-  canBuyProperty,
-  purchaseProperty,
+  groupOf,
+  ownsWholeGroup,
   calculateRent,
-  payRent,
-  canBuildOnProperty,
-  purchaseHouses
+  buildingSupply,
+  checkBuild,
+  checkSellBuilding,
+  checkMortgage,
+  checkUnmortgage,
+  unmortgageCost
 };

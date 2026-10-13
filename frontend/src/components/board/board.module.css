@@ -1,0 +1,172 @@
+/* Board overlays (DOM, outside or projected over the canvas). The canvas fills .root, which fills its parent. */
+
+.root {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  isolation: isolate; /* drei Html sets z-indices on floaters and labels: keep them under the app's sheets */
+  background: #14201a;
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.unavailable {
+  display: grid;
+  place-items: center;
+  height: 100%;
+  padding: 16px;
+  color: #cfd8c8;
+  font: 14px/1.4 system-ui, sans-serif;
+  text-align: center;
+}
+
+/* loading */
+.progress {
+  position: absolute;
+  left: 50%;
+  bottom: 16px;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 12px;
+  border-radius: 999px;
+  background: rgb(10 20 15 / 0.78);
+  color: #e8efe6;
+  font: 600 12px/1 system-ui, sans-serif;
+  pointer-events: none;
+  transition: opacity 0.4s;
+}
+
+.progress[data-done='true'] {
+  opacity: 0;
+}
+
+.bar {
+  width: 90px;
+  height: 4px;
+  border-radius: 2px;
+  background: rgb(255 255 255 / 0.18);
+  overflow: hidden;
+}
+
+.bar > i {
+  display: block;
+  height: 100%;
+  background: #ffd166;
+  transition: width 0.2s;
+}
+
+/* camera buttons */
+.controls {
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
+  display: flex;
+  gap: 6px;
+}
+
+.controls button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  min-width: 32px;
+  padding: 0 10px;
+  border: 1px solid rgb(255 255 255 / 0.16);
+  border-radius: 999px;
+  background: rgb(10 20 15 / 0.72);
+  color: #e8efe6;
+  font: 600 12px/1 system-ui, sans-serif;
+  cursor: pointer;
+  -webkit-backdrop-filter: blur(4px);
+  backdrop-filter: blur(4px);
+}
+
+.controls button:hover {
+  background: rgb(20 40 30 / 0.85);
+}
+
+.controls button:focus-visible {
+  outline: 2px solid #ffd166;
+  outline-offset: 2px;
+}
+
+.controls button svg {
+  width: 16px;
+  height: 16px;
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: rgb(255 255 255 / 0.3);
+}
+
+.controls button[aria-pressed='true'] .dot {
+  background: #2ec4b6;
+  box-shadow: 0 0 6px #2ec4b6;
+}
+
+/* token name on hover */
+.label {
+  padding: 3px 8px;
+  border: 2px solid;
+  border-radius: 999px;
+  background: rgb(10 20 15 / 0.85);
+  color: #fff;
+  font: 600 12px/1.2 system-ui, sans-serif;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+/* money floaters */
+.floater {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 3px 9px;
+  border-radius: 8px;
+  font: 800 16px/1.1 system-ui, sans-serif;
+  white-space: nowrap;
+  text-shadow: 0 1px 2px rgb(0 0 0 / 0.6);
+  pointer-events: none;
+  animation: floater-rise 2s ease-out forwards;
+}
+
+.floater span {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  opacity: 0.85;
+}
+
+.gain {
+  color: #7cf29c;
+  background: rgb(8 40 20 / 0.7);
+}
+
+.loss {
+  color: #ff8a8a;
+  background: rgb(50 10 10 / 0.7);
+}
+
+@keyframes floater-rise {
+  0% { opacity: 0; transform: translateY(8px) scale(0.9); }
+  12% { opacity: 1; transform: translateY(0) scale(1); }
+  75% { opacity: 1; }
+  100% { opacity: 0; transform: translateY(-36px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .floater {
+    animation-duration: 0.01s;
+    animation-name: none;
+  }
+}

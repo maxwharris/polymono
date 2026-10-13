@@ -9,4 +9,9 @@ const pool = new Pool({
   database: process.env.DB_NAME
 });
 
+// An idle client losing its connection (Postgres restart) emits here; without a listener it crashes the process.
+pool.on('error', (err) => {
+  console.error('Postgres pool error:', err.message);
+});
+
 module.exports = pool;

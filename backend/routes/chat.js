@@ -1,65 +1,41 @@
 const express = require('express');
-const jwt = require('jsonwebtoken');
+const { authenticateToken, requirePlayer } = require('../middleware/auth');
 const { getChatMessages, createChatMessage } = require('../db/queries');
 
 const router = express.Router();
 
-// Middleware to verify JWT
-function authenticateToken(req, res, next) {
-  const token = req.headers.authorization?.split(' ')[1];
+const MAX_MESSAGE_LENGTH = 500;
 
-  if (!token) {
-    return res.status(401).json({ message: 'No token provided' });
-  }
-
-  try {
-    const user = jwt.verify(token, process.env.JWT_SECRET);
-    req.user = user;
-    next();
-  } catch (error) {
-    res.status(401).json({ message: 'Invalid token' });
-  }
-}
-
-// All routes require authentication
 router.use(authenticateToken);
 
 // GET /api/chat/messages - Get chat history
 router.get('/messages', async (req, res) => {
   try {
-    const limit = parseInt(req.query.limit) || 100;
-    const messages = await getChatMessages(limit);
-
-    res.json(messages);
+    const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 100, 1), 200);
+    res.json(await getChatMessages(undefined, limit));
   } catch (error) {
     console.error('Get chat messages error:', error);
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ message: 'Server error' });
   }
 });
 
-// POST /api/chat/send - Send message
-router.post('/send', async (req, res) => {
+// POST /api/chat/send - Send message (players only; spectators read along)
+router.post('/send', requirePlayer, async (req, res) => {
+  const message = typeof req.body?.message === 'string' ? req.body.message.trim() : '';
+  if (!message) {
+    return res.status(400).json({ message: 'Message cannot be empty' });
+  }
+  if (message.length > MAX_MESSAGE_LENGTH) {
+    return res.status(400).json({ message: `Messages are limited to ${MAX_MESSAGE_LENGTH} characters` });
+  }
   try {
-    const { message } = req.body;
-
-    if (!message || message.trim() === '') {
-      return res.status(400).json({ message: 'Message cannot be empty' });
-    }
-
-    const chatMessage = await createChatMessage(req.user.id, message);
-
-    // Broadcast to all clients
-    if (req.app.io) {
-      req.app.io.emit('chat:message', {
-        ...chatMessage,
-        username: req.user.username
-      });
-    }
-
-    res.json(chatMessage);
+    const chatMessage = await createChatMessage(undefined, req.user.id, message);
+    const payload = { ...chatMessage, username: req.user.username };
+    req.app.io?.emit('chat:message', payload);
+    res.json(payload);
   } catch (error) {
     console.error('Send chat message error:', error);
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ message: 'Server error' });
   }
 });
 

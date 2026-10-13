@@ -1,0 +1,291 @@
+.page {
+  width: 100%;
+  max-width: 880px;
+  margin: 0 auto;
+  padding: max(16px, env(safe-area-inset-top)) 16px max(32px, env(safe-area-inset-bottom));
+  display: grid;
+  gap: 16px;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.logo {
+  flex: none;
+  width: 56px;
+  height: auto;
+}
+
+.heading {
+  flex: 1;
+  min-width: 0;
+}
+
+.title {
+  color: var(--pm-gold);
+  font-size: 1.5rem;
+  font-weight: 800;
+}
+
+.subtitle {
+  color: var(--pm-muted);
+  font-size: 0.85rem;
+}
+
+.sections {
+  display: grid;
+  gap: 16px;
+}
+
+.section {
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+}
+
+@media (min-width: 640px) {
+  .section {
+    padding: 20px 24px;
+  }
+}
+
+.sectionHead {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.sectionTitle {
+  color: var(--pm-text);
+  font-size: 1.15rem;
+  font-weight: 700;
+}
+
+.count {
+  color: var(--pm-muted);
+  font-size: 0.9rem;
+}
+
+.copy {
+  color: var(--pm-text-2);
+  font-size: 0.95rem;
+}
+
+/* accounts */
+
+.users {
+  display: grid;
+  gap: 8px;
+}
+
+.user {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-areas:
+    'token info'
+    'actions actions'
+    'extra extra';
+  align-items: center;
+  gap: 8px 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--pm-border);
+  border-radius: var(--pm-radius);
+  background: rgba(0, 0, 0, 0.16);
+}
+
+@media (min-width: 640px) {
+  .user {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    grid-template-areas:
+      'token info actions'
+      'extra extra extra';
+  }
+}
+
+.token {
+  grid-area: token;
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.25);
+  font-size: 1.3rem;
+  line-height: 1;
+}
+
+.userInfo {
+  grid-area: info;
+  min-width: 0;
+}
+
+.userName {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.you {
+  color: var(--pm-muted);
+  font-weight: 500;
+}
+
+.userMeta {
+  color: var(--pm-muted);
+  font-size: 0.85rem;
+}
+
+.userActions {
+  grid-area: actions;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+@media (min-width: 640px) {
+  .userActions {
+    justify-content: flex-end;
+  }
+}
+
+.inlineForm {
+  grid-area: extra;
+  display: grid;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.inlineRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.inlineRow > input {
+  flex: 1 1 180px;
+  width: auto;
+  min-width: 0;
+}
+
+/* new account */
+
+.form {
+  display: grid;
+  gap: 16px;
+}
+
+.formRow {
+  display: grid;
+  gap: 16px;
+}
+
+@media (min-width: 640px) {
+  .formRow {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.tokens {
+  display: grid;
+  gap: 8px;
+}
+
+.tokenGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(128px, 1fr));
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.tokenOption {
+  position: relative;
+  display: block;
+  cursor: pointer;
+}
+
+.tokenFace {
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+  min-height: 44px;
+  padding: 10px 8px;
+  border: 2px solid var(--pm-border);
+  border-radius: var(--pm-radius);
+  background: rgba(0, 0, 0, 0.18);
+  text-align: center;
+  transition: border-color 0.15s ease, background-color 0.15s ease;
+}
+
+.tokenEmoji {
+  font-size: 1.6rem;
+  line-height: 1.1;
+}
+
+.tokenName {
+  font-weight: 700;
+}
+
+.tokenOwner {
+  color: var(--pm-muted);
+  font-size: 0.8rem;
+}
+
+.tokenOption input:checked + .tokenFace {
+  border-color: var(--pm-gold);
+  background: rgba(212, 175, 55, 0.12);
+}
+
+.tokenOption input:focus-visible + .tokenFace {
+  outline: 3px solid var(--pm-gold);
+  outline-offset: 2px;
+}
+
+.tokenOption input:disabled + .tokenFace {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+@media (hover: hover) {
+  .tokenOption input:not(:disabled):not(:checked) + .tokenFace:hover {
+    border-color: rgba(212, 175, 55, 0.6);
+  }
+}
+
+/* game */
+
+.subsection {
+  display: grid;
+  gap: 8px;
+  padding-top: 12px;
+  border-top: 1px solid var(--pm-border);
+}
+
+.subTitle {
+  color: var(--pm-gold-soft);
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.hoursInput {
+  max-width: 120px;
+}
+
+.inlineRow > .hoursInput {
+  flex: 0 1 120px;
+}
+
+.danger .subTitle {
+  color: var(--pm-danger-text);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tokenFace {
+    transition: none;
+  }
+}

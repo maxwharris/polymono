@@ -1,0 +1,177 @@
+/* A docked panel: fills the box its parent gives it. */
+.chat {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  background: var(--pm-surface);
+  color: var(--pm-text);
+}
+
+.header {
+  flex: none;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--pm-border);
+}
+
+.title {
+  color: var(--pm-gold);
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.listWrap {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 120px;
+  display: flex;
+  flex-direction: column;
+}
+
+.list {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 8px 12px 12px;
+}
+
+.list:focus-visible {
+  outline: 3px solid var(--pm-gold);
+  outline-offset: -3px;
+}
+
+.empty {
+  padding: 24px 8px;
+  color: var(--pm-muted);
+  text-align: center;
+}
+
+.messages {
+  display: flex;
+  flex-direction: column;
+}
+
+.day {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 12px 0 4px;
+  color: var(--pm-muted);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.day::before,
+.day::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--pm-border);
+}
+
+.message {
+  margin-top: 10px;
+  padding: 2px 8px;
+  border-left: 2px solid transparent;
+  border-radius: 4px;
+}
+
+.grouped {
+  margin-top: 2px;
+}
+
+.mine {
+  border-left-color: rgba(212, 175, 55, 0.55);
+  background: rgba(212, 175, 55, 0.05);
+}
+
+.meta {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  line-height: 1.3;
+}
+
+.author {
+  font-weight: 700;
+  font-size: 0.9rem;
+  overflow-wrap: anywhere;
+}
+
+.time {
+  color: var(--pm-muted);
+  font-size: 0.75rem;
+  white-space: nowrap;
+}
+
+.text {
+  color: var(--pm-text);
+  font-size: 0.95rem;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.jump {
+  position: absolute;
+  left: 50%;
+  bottom: 8px;
+  transform: translateX(-50%);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+}
+
+.jump:hover,
+.jump:active {
+  transform: translateX(-50%);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+}
+
+.form {
+  flex: none;
+  display: grid;
+  gap: 4px;
+  padding: 8px 12px max(8px, env(safe-area-inset-bottom));
+  border-top: 1px solid var(--pm-border);
+  background: var(--pm-surface);
+}
+
+.inputRow {
+  display: flex;
+  gap: 8px;
+}
+
+.input {
+  flex: 1;
+  min-width: 0;
+}
+
+.formMeta {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+  min-height: 1.2em;
+}
+
+.counter {
+  flex: none;
+  color: var(--pm-muted);
+  font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.counterWarn {
+  color: var(--pm-gold-soft);
+  font-weight: 700;
+}
+
+.spectator {
+  flex: none;
+  padding: 12px;
+  border-top: 1px solid var(--pm-border);
+  color: var(--pm-muted);
+  font-size: 0.9rem;
+  text-align: center;
+}

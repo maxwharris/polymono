@@ -4,10 +4,13 @@
 # the URLs below. Running it by hand on the box works too. Box conventions: dev-personal/CLAUDE.md
 #
 # check: http://mp.maxharris.io/
+# check: http://mp.maxharris.io/api/health
 # check: http://mp.maxharris.io/socket.io/?EIO=4&transport=polling
 #
 # nginx (sites-available/mp.maxharris.io) serves frontend/dist/ and proxies the API and socket.io to :3002.
-# backend/.env and the Postgres database exist only on the box. SQL in backend/migrations/ is applied by hand.
+# backend/.env and the Postgres database exist only on the box. SQL in backend/migrations/ is applied by hand,
+# in this order: add_lobby_system.sql (first install only: it empties the players table), add_player_colors.sql,
+# add_game_engine.sql (safe to re-run). /api/health fails until the board is seeded (node scripts/seedProperties.js).
 
 set -e
 [ "$(uname)" = Linux ] || { echo "deploy.sh runs on the box. From your Mac: deployp"; exit 1; }
