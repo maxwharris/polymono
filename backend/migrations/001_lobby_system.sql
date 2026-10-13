@@ -1,3 +1,6 @@
+-- Empties the players table: it only ever ran on the first install. Databases built from schema.sql record it
+-- as applied and never run it.
+
 -- Add lobby status to game table
 ALTER TABLE game
   ALTER COLUMN status TYPE VARCHAR(20),
