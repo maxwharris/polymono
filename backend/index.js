@@ -33,9 +33,13 @@ const io = socketIo(server, {
 app.use(cors(corsOptions));
 app.use(express.json({ limit: '50kb' }));
 
+// userId -> number of open sockets (a player may have the game open on a phone and a laptop)
+const online = new Map();
+
 // Initialize game controller
 const GameController = require('./game/gameController');
 app.gameController = new GameController(io);
+app.gameController.isOnline = (userId) => online.has(userId);
 app.io = io;
 
 // Routes
@@ -87,8 +91,6 @@ io.use(async (socket, next) => {
   }
 });
 
-// userId -> number of open sockets (a player may have the game open on a phone and a laptop)
-const online = new Map();
 
 function broadcastPresence() {
   io.emit('presence', { online: [...online.keys()] });

@@ -51,7 +51,29 @@ async function advanceTurn(t) {
   }
 }
 
+// Net worth as the client shows it: cash, properties at price (mortgaged at mortgage value), buildings at cost.
+function standings(players, properties) {
+  return players.map(p => {
+    const owned = properties.filter(pr => pr.owner_id === p.id);
+    const worth = p.is_bankrupt ? 0 : p.money + owned.reduce((sum, pr) =>
+      sum + (pr.is_mortgaged ? pr.mortgage_value : pr.purchase_price) + pr.house_count * (pr.house_cost || 0), 0);
+    return { userId: p.user_id, username: p.username, tokenType: p.token_type, netWorth: worth, money: p.money,
+      properties: owned.length, bankrupt: p.is_bankrupt };
+  }).sort((a, b) => (a.bankrupt - b.bankrupt) || b.netWorth - a.netWorth);
+}
+
+// A new game wipes the board and the log, so each finished game's result is kept here.
+async function recordResult(t, winner) {
+  const players = await q.getAllPlayers(t.db);
+  const properties = await q.getAllProperties(t.db);
+  await t.db.query(
+    'INSERT INTO game_history (started_at, winner_user_id, standings) VALUES ($1, $2, $3)',
+    [t.game.started_at, winner ? winner.user_id : null, JSON.stringify(standings(players, properties))]
+  );
+}
+
 async function endGame(t, winner) {
+  await recordResult(t, winner);
   t.game = await q.updateGame(t.db, {
     status: 'completed',
     completed_at: new Date(),

@@ -30,6 +30,9 @@ router.get('/log', action(req => {
   return game(req).getLog({ limit, before: Number.isInteger(before) && before > 0 && before <= 2147483647 ? before : null });
 }));
 
+// GET /api/game/history - results of finished games, newest first
+router.get('/history', action(req => game(req).getHistory()));
+
 router.use(requirePlayer);
 
 // Turn

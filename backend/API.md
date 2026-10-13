@@ -57,7 +57,7 @@ Phases, for the current player:
 | `roll` | roll; in jail and not yet rolled: also pay-fine, use-card |
 | `buy` | buy (if money >= price) or decline |
 | `debt` | raise money (sell houses, mortgage, trade), then pay-debts; or declare bankruptcy. While in debt a player can't trade away cash or jail cards, and properties only for at least their mortgage value |
-| `end` | end-turn |
+| `end` | transient: the server hands the turn on by itself as soon as nothing is left to decide |
 | `over` | (game completed) |
 
 Building, selling, mortgaging and unmortgaging are allowed for any active player at any time while the
@@ -74,7 +74,7 @@ game is in progress. Trades too.
 | `use-card` | | same, with a Get Out of Jail Free card |
 | `pay-debts` | | phase `debt`, money >= total owed |
 | `bankrupt` | | phase `debt`; assets go to the creditor (one player creditor) or the bank |
-| `end-turn` | | phase `end` |
+| `end-turn` | | phase `end` (rarely needed: turns end automatically) |
 | `build` | `{ propertyId }` | one house (or the hotel) at a time, even-build rule, bank supply |
 | `sell-building` | `{ propertyId }` | half the house cost back, even-sell rule |
 | `mortgage` | `{ propertyId }` | no buildings anywhere in its color group |
@@ -88,6 +88,8 @@ players), `remove-player { playerId }` (host). `POST /api/game/new` starts a fre
 `completed`.
 
 `GET /api/game/log?limit=100&before=<id>` returns persisted events, oldest first (same shape as below).
+`GET /api/game/history` returns finished games, newest first: `{ id, started_at, completed_at, winner_user_id,
+standings: [{ userId, username, tokenType, netWorth, money, properties, bankrupt }] }` (best first).
 
 ## Events
 
@@ -118,8 +120,9 @@ Types and their `data`:
 - `join`, `leave`, `ready` `{ ready }`, `start`, `removed`, `reset`
 - `trade_offer` / `trade_accepted` (logged as the accepting player's action) / `trade_rejected` / `trade_countered`
   `{ tradeId, proposerId, recipientId, proposerUserId, recipientUserId }`
-- `decline` with `{ timeout: true }` and `turn_skipped` when the turn timer runs out. A player in debt gets one
-  more turn period, then is declared bankrupt.
+- `turn_skipped` `{ reason: 'timeout', autoplayed: true }` when the turn timer runs out: the server then plays the
+  turn for the absent player (rolls, jail rolls count as attempts, passes on purchases with `decline { timeout: true }`,
+  takes doubles re-rolls). A player in debt gets one more turn period, then is declared bankrupt.
 
 ## Trades (`/api/trade`)
 
@@ -152,6 +155,14 @@ ownership change) are expired when anything changes hands.
   { username, password, tokenType }`, `DELETE /api/auth/users/:id`, `POST /api/admin/users/:id/password
   { newPassword }`, `POST /api/admin/reset-game`, `PATCH /api/admin/settings { turn_hours }`.
 - Token types: `taxi`, `pigeon`, `rat`, `subway`, `bull`, `empire` (the 3D models in `frontend/public/tokens`).
+
+## Phone alerts (ntfy)
+
+- `GET /api/auth/alerts` → `{ enabled, topic, subscribeUrl }`; `POST /api/auth/alerts { enabled }` turns them on (a new
+  private topic) or off; `POST /api/auth/alerts/test` sends a test alert.
+- The player subscribes to their topic in the ntfy app (or at `subscribeUrl`). Alerts go out only while they are offline:
+  their turn starting, a trade offer to them or their offer accepted, falling into debt, a reminder half way to the turn
+  deadline, and the end of the game. Server env: `NTFY_BASE` (default https://ntfy.sh), `SITE_URL` (the alert's link).
 
 ## Socket.io
 

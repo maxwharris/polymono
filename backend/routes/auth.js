@@ -2,6 +2,7 @@ const express = require('express');
 const bcrypt = require('bcryptjs');
 const pool = require('../db');
 const { TOKEN_TYPES } = require('../game/board');
+const { newTopic, subscribeUrl, sendAlert } = require('../game/notifier');
 const { authenticateToken, requireAdmin, isAdmin, signUserToken, signSpectatorToken, userFromToken } = require('../middleware/auth');
 
 const router = express.Router();
@@ -126,6 +127,46 @@ router.post('/password', authenticateToken, async (req, res) => {
     console.error('Change password error:', error);
     res.status(500).json({ message: 'Server error' });
   }
+});
+
+// ---- phone alerts (ntfy) -----------------------------------------------------------------------------
+
+async function alertSettings(userId) {
+  const result = await pool.query('SELECT notify_topic FROM users WHERE id = $1', [userId]);
+  const topic = result.rows[0]?.notify_topic || null;
+  return { enabled: !!topic, topic, subscribeUrl: topic ? subscribeUrl(topic) : null };
+}
+
+// GET /api/auth/alerts - my alert settings
+router.get('/alerts', authenticateToken, async (req, res) => {
+  if (req.user.isSpectator) return res.status(403).json({ message: 'Spectators have no alerts' });
+  try {
+    res.json(await alertSettings(req.user.id));
+  } catch (error) {
+    console.error('Alert settings error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// POST /api/auth/alerts { enabled } - turning alerts on picks a fresh private topic; off forgets it.
+router.post('/alerts', authenticateToken, async (req, res) => {
+  if (req.user.isSpectator) return res.status(403).json({ message: 'Spectators have no alerts' });
+  try {
+    const topic = req.body?.enabled ? newTopic() : null;
+    await pool.query('UPDATE users SET notify_topic = $1 WHERE id = $2', [topic, req.user.id]);
+    res.json(await alertSettings(req.user.id));
+  } catch (error) {
+    console.error('Alert settings error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// POST /api/auth/alerts/test - send myself a test alert
+router.post('/alerts/test', authenticateToken, async (req, res) => {
+  const settings = req.user.isSpectator ? null : await alertSettings(req.user.id);
+  if (!settings?.topic) return res.status(400).json({ message: 'Turn alerts are off' });
+  await sendAlert(settings.topic, 'Alerts are working. You will hear from Polymono when it is your turn.');
+  res.json({ message: 'Sent' });
 });
 
 // ---- admin: user management ----------------------------------------------------------------------------

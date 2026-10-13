@@ -21,6 +21,7 @@ const { moveBy, sendToJail } = require('./mechanics/movement');
 const jail = require('./mechanics/jail');
 const { resolveLanding } = require('./mechanics/landing');
 const trades = require('./mechanics/trade');
+const { sendAlert } = require('./notifier');
 
 const SPACE_NAMES = Object.fromEntries(boardData.map(s => [s.position, s.name]));
 
@@ -46,6 +47,7 @@ class GameTx {
     this.db = db;
     this.events = [];
     this.notices = [];
+    this.alerts = [];
   }
 
   async load() {
@@ -67,6 +69,11 @@ class GameTx {
       userId: player?.user_id ?? null
     });
     this.events.push(formatEvent(row));
+  }
+
+  // Phone alert (ntfy) for these users, sent after commit if they are not online.
+  alert(userIds, message) {
+    this.alerts.push({ userIds: userIds.filter(Boolean), message });
   }
 
   notify(name, trade) {
@@ -219,6 +226,46 @@ async function renumberSeats(db) {
     WHERE players.id = s.id`);
 }
 
+/** The dice and everything they cause, for the current player. Shared by the Roll button and the turn timer. */
+async function playRoll(t, me) {
+  const roll = rollDice();
+  t.ts.lastRoll = roll;
+  t.ts.rolled = true;
+  t.ts.extraRoll = false;
+  await t.log('roll', me, roll, `${me.username} rolled ${roll.die1} + ${roll.die2} = ${roll.total}${roll.isDoubles ? ' (doubles)' : ''}`);
+
+  if (me.is_in_jail) {
+    const freed = await jail.rollFromJail(t, me, roll);
+    if (freed) {
+      const moved = await moveBy(t, freed, roll.total, 'roll');
+      await resolveLanding(t, moved, { diceTotal: roll.total });
+    }
+  } else if (roll.isDoubles && t.ts.doubles >= 2) {
+    await sendToJail(t, me, 'three_doubles');
+  } else {
+    if (roll.isDoubles) t.ts.doubles += 1;
+    const moved = await moveBy(t, me, roll.total, 'roll');
+    await resolveLanding(t, moved, { diceTotal: roll.total });
+    const after = await q.getPlayerById(t.db, me.id);
+    t.ts.extraRoll = roll.isDoubles && !after.is_in_jail;
+  }
+  turns.settle(t.ts);
+  return roll;
+}
+
+// Nothing left to decide: the turn passes on by itself (building and trading are allowed any time anyway).
+async function finishTurnIfDone(t) {
+  if (t.ts.phase === 'end' && t.game.status === 'in_progress') await turns.advanceTurn(t);
+}
+
+async function declinePending(t, me, { timeout = false } = {}) {
+  const property = await q.getPropertyById(t.db, t.ts.pendingPropertyId);
+  const text = timeout ? `${me.username} was away and passed on ${property.name}` : `${me.username} passed on ${property.name}`;
+  await t.log('decline', me, { propertyId: property.id, ...(timeout ? { timeout: true } : {}) }, text);
+  t.ts.pendingPropertyId = null;
+  turns.settle(t.ts);
+}
+
 /**
  * Buildings go back to the bank for half their cost. If everything is owed to one player, they get the
  * cash, properties (still mortgaged) and jail cards; otherwise player creditors are paid from the cash in
@@ -278,9 +325,40 @@ async function declareBankruptcy(t, me, reasonText = null) {
   }
 }
 
+// Turn into phone alerts: whose turn it is, trade offers, debts, the end of the game.
+function alertsFor(t) {
+  const out = [...t.alerts];
+  for (const e of t.events) {
+    if (e.type === 'turn') out.push({ userIds: [e.user_id], message: "It's your turn in Polymono." });
+    else if (e.type === 'trade_offer' || e.type === 'trade_countered') out.push({ userIds: [e.data.recipientUserId], message: `${e.username} sent you a trade offer.` });
+    else if (e.type === 'trade_accepted') out.push({ userIds: [e.data.proposerUserId], message: `${e.username} accepted your trade.` });
+    else if (e.type === 'debt') out.push({ userIds: [e.user_id], message: `You owe $${e.data.totalOwed}. Raise the money or declare bankruptcy.` });
+    else if (e.type === 'game_over') out.push({ userIds: 'all', message: e.text });
+  }
+  return out;
+}
+
+async function sendAlerts(t, isOnline = () => false) {
+  const wanted = alertsFor(t);
+  if (!wanted.length) return;
+  const rows = (await pool.query('SELECT id, notify_topic FROM users WHERE notify_topic IS NOT NULL')).rows;
+  const topics = new Map(rows.map(r => [r.id, r.notify_topic]));
+  const sent = new Set();
+  for (const a of wanted) {
+    const ids = a.userIds === 'all' ? [...topics.keys()] : a.userIds;
+    for (const id of ids) {
+      const key = `${id}|${a.message}`;
+      if (!topics.has(id) || isOnline(id) || sent.has(key)) continue;
+      sent.add(key);
+      await sendAlert(topics.get(id), a.message);
+    }
+  }
+}
+
 class GameController {
   constructor(io) {
     this.io = io;
+    this.isOnline = () => false; // index.js wires this to the socket presence map
     this.queue = Promise.resolve();
     this.timer = null;
   }
@@ -316,6 +394,7 @@ class GameController {
     }
     const state = await this.getState();
     this.broadcast(state, t);
+    sendAlerts(t, this.isOnline).catch(err => console.error('Alert error:', err.message));
     // The events too, so the actor sees their own outcome even while their socket is reconnecting.
     return { ok: true, ...(result || {}), state, events: t.events };
   }
@@ -347,6 +426,13 @@ class GameController {
     }
   }
 
+  async getHistory() {
+    const result = await pool.query(
+      'SELECT id, started_at, completed_at, winner_user_id, standings FROM game_history ORDER BY completed_at DESC LIMIT 50'
+    );
+    return result.rows;
+  }
+
   async getLog({ limit, before }) {
     const rows = await q.getActions(pool, { limit, before });
     return rows.map(formatEvent);
@@ -354,7 +440,9 @@ class GameController {
 
   // Skips the turn of a player who let the deadline pass. Runs every minute.
   startTurnTimer() {
-    const tick = () => this.checkDeadline().catch(err => console.error('Turn timer error:', err));
+    const tick = () => this.checkDeadline()
+      .then(() => this.sendReminder())
+      .catch(err => console.error('Turn timer error:', err));
     this.timer = setInterval(tick, 60 * 1000);
     tick();
   }
@@ -377,13 +465,32 @@ class GameController {
         if (Date.now() < deadline.getTime() + graceMs) return { noop: true };
         return declareBankruptcy(t, me, `${me.username} ran out of time to pay what they owed`);
       }
-      if (t.ts.phase === 'buy') {
-        const property = await q.getPropertyById(t.db, t.ts.pendingPropertyId);
-        await t.log('decline', me, { propertyId: property.id, timeout: true }, `${me.username} ran out of time and passed on ${property.name}`);
-        t.ts.pendingPropertyId = null;
+      // Play the turn for them the way a cautious player would: roll (jail rolls count as attempts), pass on
+      // purchases, take doubles re-rolls. Skipping instead would let anyone dodge rent by not showing up.
+      await t.log('turn_skipped', me, { reason: 'timeout', autoplayed: true }, `${me.username} ran out of time, so their turn was played for them`);
+      for (let i = 0; i < 4 && t.game.current_turn_user_id === me.user_id && t.game.status === 'in_progress'; i++) {
+        if (t.ts.phase === 'roll') await playRoll(t, await q.getPlayerById(t.db, me.id));
+        else if (t.ts.phase === 'buy') await declinePending(t, me, { timeout: true });
+        else if (t.ts.phase === 'end') await turns.advanceTurn(t);
+        else break; // debt: the usual grace period applies from the original deadline
       }
-      await t.log('turn_skipped', me, { reason: 'timeout' }, `${me.username} ran out of time`);
-      await turns.advanceTurn(t);
+      if (t.game.current_turn_user_id === me.user_id && t.ts.phase === 'end') await turns.advanceTurn(t);
+    });
+  }
+
+  // Half way to the deadline, remind the current player once.
+  async sendReminder() {
+    const game = await q.getGame();
+    if (!game || game.status !== 'in_progress' || !game.turn_deadline) return;
+    const hours = Number(game.settings?.turn_hours) || 0;
+    const left = new Date(game.turn_deadline).getTime() - Date.now();
+    if (hours <= 0 || left <= 0 || left > hours * 3600 * 1000 / 2) return;
+    if (turns.normalizeTurnState(game.turn_state).reminded) return;
+    await this.run(async (t) => {
+      if (t.ts.reminded || t.game.current_turn_user_id !== game.current_turn_user_id) return { noop: true };
+      t.ts.reminded = true;
+      const me = await q.getPlayerByUserId(t.db, t.game.current_turn_user_id);
+      t.alert([me.user_id], `Your turn is waiting: ${Math.max(1, Math.round(left / 3600000))}h left before it is played for you.`);
     });
   }
 
@@ -393,29 +500,8 @@ class GameController {
     return this.run(async (t) => {
       const me = await requireTurn(t, userId);
       if (t.ts.phase !== 'roll') throw new GameError(phaseReason(t.ts.phase), 409);
-
-      const roll = rollDice();
-      t.ts.lastRoll = roll;
-      t.ts.rolled = true;
-      t.ts.extraRoll = false;
-      await t.log('roll', me, roll, `${me.username} rolled ${roll.die1} + ${roll.die2} = ${roll.total}${roll.isDoubles ? ' (doubles)' : ''}`);
-
-      if (me.is_in_jail) {
-        const freed = await jail.rollFromJail(t, me, roll);
-        if (freed) {
-          const moved = await moveBy(t, freed, roll.total, 'roll');
-          await resolveLanding(t, moved, { diceTotal: roll.total });
-        }
-      } else if (roll.isDoubles && t.ts.doubles >= 2) {
-        await sendToJail(t, me, 'three_doubles');
-      } else {
-        if (roll.isDoubles) t.ts.doubles += 1;
-        const moved = await moveBy(t, me, roll.total, 'roll');
-        await resolveLanding(t, moved, { diceTotal: roll.total });
-        const after = await q.getPlayerById(t.db, me.id);
-        t.ts.extraRoll = roll.isDoubles && !after.is_in_jail;
-      }
-      turns.settle(t.ts);
+      const roll = await playRoll(t, me);
+      await finishTurnIfDone(t);
       return { roll };
     });
   }
@@ -436,6 +522,7 @@ class GameController {
       }
       t.ts.pendingPropertyId = null;
       turns.settle(t.ts);
+      await finishTurnIfDone(t);
     });
   }
 
@@ -443,10 +530,8 @@ class GameController {
     return this.run(async (t) => {
       const me = await requireTurn(t, userId);
       if (t.ts.phase !== 'buy') throw new GameError('There is nothing to decline right now', 409);
-      const property = await q.getPropertyById(t.db, t.ts.pendingPropertyId);
-      await t.log('decline', me, { propertyId: property.id }, `${me.username} passed on ${property.name}`);
-      t.ts.pendingPropertyId = null;
-      turns.settle(t.ts);
+      await declinePending(t, me);
+      await finishTurnIfDone(t);
     });
   }
 
@@ -482,6 +567,7 @@ class GameController {
         `${me.username} paid what they owed: ${to}`);
       t.ts.debts = [];
       turns.settle(t.ts);
+      await finishTurnIfDone(t);
       // Settling late shouldn't make the timer skip the rest of the turn straight away.
       const hours = Number(t.game.settings?.turn_hours) || 0;
       if (hours > 0 && t.game.turn_deadline && new Date(t.game.turn_deadline) < new Date()) {
