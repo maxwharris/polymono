@@ -1,8 +1,8 @@
-const pool = require('../db');
 const properties = require('../data/properties');
 
-async function seedProperties() {
-  console.log('Seeding properties into database...\n');
+// Inserts the 28 purchasable spaces (existing ones are kept). `db` is a pg Pool or Client.
+async function seedProperties(db, log = console.log) {
+  log('Seeding properties into database...\n');
 
   let count = 0;
 
@@ -10,7 +10,7 @@ async function seedProperties() {
     // Only seed properties that can be purchased (not special spaces)
     if (prop.type === 'property' || prop.type === 'railroad' || prop.type === 'utility') {
       try {
-        await pool.query(
+        await db.query(
           `INSERT INTO properties
           (name, property_type, color_group, position_on_board, purchase_price, rent_base, rent_values, house_cost, mortgage_value)
           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
@@ -27,7 +27,7 @@ async function seedProperties() {
             prop.mortgageValue
           ]
         );
-        console.log(`✓ Added: ${prop.name} (position ${prop.position})`);
+        log(`✓ Added: ${prop.name} (position ${prop.position})`);
         count++;
       } catch (error) {
         console.error(`✗ Error adding ${prop.name}:`, error.message);
@@ -35,17 +35,20 @@ async function seedProperties() {
     }
   }
 
-  console.log(`\n✅ Seeded ${count} properties successfully!`);
-  console.log('Properties breakdown:');
-  console.log('  - 22 standard properties');
-  console.log('  - 4 railroads');
-  console.log('  - 2 utilities');
-  console.log('  = 28 total purchasable properties\n');
-
-  process.exit(0);
+  log(`\n✅ Seeded ${count} properties successfully!`);
+  log('Properties breakdown:');
+  log('  - 22 standard properties');
+  log('  - 4 railroads');
+  log('  - 2 utilities');
+  log('  = 28 total purchasable properties\n');
+  return count;
 }
 
-seedProperties().catch(error => {
-  console.error('Fatal error:', error);
-  process.exit(1);
-});
+module.exports = seedProperties;
+
+if (require.main === module) {
+  seedProperties(require('../db')).then(() => process.exit(0), error => {
+    console.error('Fatal error:', error);
+    process.exit(1);
+  });
+}

@@ -1,5 +1,14 @@
--- Full schema for a fresh database (equivalent to the original schema plus every file in migrations/).
--- After this, run: node scripts/seedProperties.js
+-- Full schema for a fresh database: the original schema plus every migration recorded at the bottom.
+--   psql -d <db> -f schema.sql && node scripts/migrate.js && node scripts/seedProperties.js
+--
+-- Keeping this file and migrations/ in step (scripts/migrate.js has the rules for writing a migration):
+-- * When you add migrations/NNN_name.sql, EITHER fold its changes into this file AND add its row to the
+--   schema_migrations INSERT at the bottom (checksum: shasum -a 256 migrations/NNN_name.sql), in the same
+--   commit, OR do neither and migrate.js applies it to fresh databases after this file.
+--   Never record a migration whose changes are not in this file: fresh databases would silently lack them.
+-- * 001 empties the players table. It is recorded below, so a database built from this file never runs it.
+-- * npm test builds the schema both ways (the original schema plus every migration, and this file plus the
+--   unrecorded ones) and fails if they differ or a recorded checksum no longer matches its file.
 
 -- users Table
 CREATE TABLE users (
@@ -124,3 +133,15 @@ CREATE TABLE game_chat (
 );
 
 CREATE INDEX idx_game_chat_timestamp ON game_chat(game_id, timestamp DESC);
+
+-- Migrations this file already includes (rules at the top). Same table as scripts/migrate.js creates.
+CREATE TABLE schema_migrations (
+    name TEXT PRIMARY KEY,
+    checksum TEXT NOT NULL, -- sha256 of the file
+    applied_at TIMESTAMPTZ DEFAULT now()
+);
+
+INSERT INTO schema_migrations (name, checksum) VALUES
+('001_lobby_system', '3f0005a525bcb1ba64523e925d38c87fbb33ad5ac00e07324fc88bab1a5c6b61'),
+('002_player_colors', '6cde2c20da82436ca34dc8e8202dc200cac662b9b7c7368cbb7e66a430353504'),
+('003_game_engine', 'd86fc5f57a898b488830b309223469022b37baa42eac049eba90bc0b90c829bd');

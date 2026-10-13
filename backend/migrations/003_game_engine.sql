@@ -1,5 +1,5 @@
 -- Server-side turn state, shuffled card decks, counter-offer links and safer foreign keys.
--- Apply after add_lobby_system.sql and add_player_colors.sql. Safe to re-run; it never deletes game data.
+-- Runs after 001_lobby_system.sql and 002_player_colors.sql. Safe to re-run; it never deletes game data.
 
 ALTER TABLE game ALTER COLUMN status SET DEFAULT 'lobby';
 ALTER TABLE game ADD COLUMN IF NOT EXISTS turn_state JSONB NOT NULL DEFAULT '{}'::jsonb;

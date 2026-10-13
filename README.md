@@ -25,14 +25,16 @@ polymono/
 ├── backend/                # Node.js + Express server
 │   ├── index.js           # Main server entry point
 │   ├── db.js              # PostgreSQL connection
-│   ├── schema.sql         # Database schema
+│   ├── schema.sql         # Database schema (fresh installs)
+│   ├── migrations/        # Schema changes, applied by scripts/migrate.js
 │   ├── game/              # Game logic
 │   │   ├── gameController.js
 │   │   └── mechanics/     # Game mechanics modules
 │   ├── routes/            # API endpoints
 │   ├── db/                # Database queries
 │   ├── data/              # Static data (properties)
-│   └── scripts/           # Utility scripts
+│   ├── scripts/           # Utility scripts (migrate, backup, seed)
+│   └── test/              # npm test
 │
 ├── frontend/              # React + Vite
 │   ├── src/
@@ -54,8 +56,10 @@ cd backend
 npm install
 cp .env.example .env          # set the DB_* values and a JWT_SECRET
 psql -U <user> -d <db> -f schema.sql
+node scripts/migrate.js       # applies any migration schema.sql doesn't include yet
 node scripts/seedProperties.js
 npm run dev                   # http://localhost:3002
+npm test                      # migrations + game scenarios on a throwaway Postgres; needs no database or .env
 
 cd ../frontend
 npm install
@@ -74,13 +78,17 @@ render the snapshots it pushes. The API and socket contract is in [backend/API.m
 ### Using the Deployment Script
 
 Live at http://mp.maxharris.io, from `/var/www/polymono` on the personal EC2 box. From your Mac, run
-`deployp` in this repo: it pushes, pulls on the box and runs `deploy.sh` there (build, restart
-`monop-backend`), then checks the site. `deploy.sh` can also be run by hand on the box.
+`deployp` in this repo: it pushes, pulls on the box and runs `deploy.sh` there (build, back up the database,
+apply migrations, restart `monop-backend`), then checks the site. A failed backup or migration stops the deploy
+with the old version still running. `deploy.sh` can also be run by hand on the box.
 
 ### Database changes
 
-SQL in `backend/migrations/` is applied by hand with `psql`, in the order listed at the top of `deploy.sh`.
-`add_game_engine.sql` is safe to re-run.
+Add `backend/migrations/NNN_name.sql` (next number). `deploy.sh` applies pending migrations with
+`backend/scripts/migrate.js`, each in a transaction, and records them in `schema_migrations`; never edit one
+that has been deployed. Either fold the change into `schema.sql` and record it at its bottom, or leave
+`schema.sql` alone (the rules are at the top of both files). `npm test` checks that both paths give the same
+schema. Backups: `~/backups/polymono` on the box (before every deploy, and nightly via `backend/scripts/backup.sh`).
 
 ## Features
 
@@ -100,6 +108,10 @@ SQL in `backend/migrations/` is applied by hand with `psql`, in the order listed
 
 ### Backend
 - `npm start` / `npm run dev`
+- `npm test` - migration tests and the game scenarios against a temporary Postgres 16 (`test/`)
+- `node scripts/migrate.js` - apply pending migrations; `--status` lists them, `--baseline <name>` records a
+  database migrated by hand
+- `scripts/backup.sh` - `pg_dump` to `~/backups/polymono` (nightly from cron; the cron line is in the file)
 - `node scripts/seedProperties.js` - load the 28 properties (needed once per database)
 - `node scripts/updateProperties.js` - re-apply prices and rents from `data/properties.js`
 - `node scripts/resetGame.js` - back to the lobby (asks the running server, so clients update)
