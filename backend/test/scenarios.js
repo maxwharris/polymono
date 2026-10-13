@@ -9,6 +9,7 @@ let base;            // http://127.0.0.1:<port>
 let pool;            // the server's pg pool
 let rolls;           // scripted dice: push [die1, die2]; empty = random
 let gameController;  // app.gameController (checkDeadline is driven by hand; the timer is stopped)
+let alerts;          // ntfy posts captured by the fake ntfy server: [{ topic, body }]
 const T = {};        // login tokens by username, plus T.spec (spectator)
 const U = {};        // user ids by username
 
@@ -137,9 +138,8 @@ async function phasesAndBuying() {
   check('actions say buy ok', s.game.turn_state.actions.buy.ok && !s.game.turn_state.actions.endTurn.ok);
   r = await act(T.max, 'buy');
   check('bought for $60', r.s === 200 && (await money('max')) === 1440 && (await prop(3)).owner_id === (await P('max')).id);
-  check('phase end after buy', r.j.state.game.turn_state.phase === 'end');
-  r = await act(T.max, 'end-turn');
-  check('turn passes to jack', r.j.state.game.current_turn_user_id === U.jack);
+  check('turn passes on by itself after buying', r.j.state.game.current_turn_user_id === U.jack, String(r.j.state.game.current_turn_user_id));
+  check('End turn is not needed any more (409)', (await act(T.max, 'end-turn')).s === 409);
 }
 
 async function rent() {
@@ -180,13 +180,13 @@ async function doubles() {
   rolls.push([5, 5]);
   r = await act(T.max, 'roll');
   const mx = await P('max');
-  check('third doubles -> jail, turn over', mx.is_in_jail && mx.position === 10 && r.j.state.game.turn_state.phase === 'end', JSON.stringify(r.j.state.game.turn_state));
+  check('third doubles -> jail, turn over', mx.is_in_jail && mx.position === 10 && r.j.state.game.current_turn_user_id !== U.max, JSON.stringify(r.j.state.game.turn_state));
 
   await setPlayer('jack', { position: 26, is_in_jail: false });
   await setTurn('jack');
   rolls.push([2, 2]);
   r = await act(T.jack, 'roll');
-  check('doubles onto Go To Jail: jailed, no extra roll', (await P('jack')).is_in_jail && r.j.state.game.turn_state.phase === 'end', r.j.state.game.turn_state.phase);
+  check('doubles onto Go To Jail: jailed, no extra roll', (await P('jack')).is_in_jail && r.j.state.game.current_turn_user_id !== U.jack, r.j.state.game.turn_state.phase);
 }
 
 async function jail() {
@@ -194,7 +194,7 @@ async function jail() {
   await setTurn('max');
   rolls.push([1, 2]);
   let r = await act(T.max, 'roll');
-  check('failed jail roll: stays, turn over', (await P('max')).is_in_jail && (await P('max')).jail_turns === 1 && r.j.state.game.turn_state.phase === 'end');
+  check('failed jail roll: stays, turn over', (await P('max')).is_in_jail && (await P('max')).jail_turns === 1 && r.j.state.game.current_turn_user_id !== U.max);
   await setTurn('max');
   check('pay fine before rolling', (await act(T.max, 'pay-fine')).s === 200 && !(await P('max')).is_in_jail && (await money('max')) === 950);
   check('cannot pay fine twice', (await act(T.max, 'pay-fine')).s === 400);
@@ -213,7 +213,7 @@ async function jail() {
   rolls.push([3, 3]);
   r = await act(T.max, 'roll');
   check('doubles escape lands on owned property and pays rent', !(await P('max')).is_in_jail && (await P('max')).position === 16 && (await money('max')) === 1000 - 14, `money ${await money('max')}`);
-  check('doubles escape gives no extra roll', r.j.state.game.turn_state.phase === 'end');
+  check('doubles escape gives no extra roll', r.j.state.game.current_turn_user_id !== U.max);
 
   await setPlayer('max', { is_in_jail: true, position: 10, jail_turns: 0, get_out_of_jail_cards: 1 });
   await setTurn('max');
@@ -287,6 +287,8 @@ async function debtAndBankruptcy() {
   await act(T.youngeun, 'roll');
   r = await act(T.youngeun, 'bankrupt');
   s = r.j.state;
+  const hist = (await call(T.jack, 'GET', '/api/game/history')).j;
+  check('finished game is saved with standings', Array.isArray(hist) && hist.length >= 1 && hist[0].winner_user_id === U.jack && hist[0].standings[0].username === 'jack', JSON.stringify(hist && hist[0]));
   check('last player standing wins', s.game.status === 'completed' && s.game.winner_user_id === U.jack, JSON.stringify({ st: s.game.status, w: s.game.winner_user_id }));
   check('roll after game over refused', (await act(T.jack, 'roll')).s === 409);
   r = await act(T.jack, 'new');
@@ -354,6 +356,43 @@ async function turnTimer() {
   check('timeout leaves a debt for the player', (await state()).game.current_turn_user_id === U.jack);
 }
 
+async function timeoutsPlayTheTurn() {
+  await sql('UPDATE properties SET owner_id = NULL, house_count = 0, is_mortgaged = false');
+  await setPlayer('jack', { position: 0, money: 1500, is_in_jail: false, jail_turns: 0 });
+  await setTurn('jack');
+  rolls.push([1, 2]);
+  await expireTurn('1 minute');
+  const s = await state();
+  check('timeout auto-plays: jack rolls, passes on Meatpacking, the turn moves on',
+    (await P('jack')).position === 3 && (await prop(3)).owner_id === null && s.game.current_turn_user_id === U.youngeun,
+    `${(await P('jack')).position} ${s.game.current_turn_user_id}`);
+  await setPlayer('jack', { position: 10, is_in_jail: true, jail_turns: 0 });
+  await setTurn('jack');
+  rolls.push([1, 2]);
+  await expireTurn('1 minute');
+  check('timeout in Rikers counts as a jail attempt', (await P('jack')).jail_turns === 1 && (await P('jack')).is_in_jail);
+  await setPlayer('jack', { is_in_jail: false, jail_turns: 0 });
+}
+
+async function phoneAlerts() {
+  const on = await call(T.jack, 'POST', '/api/auth/alerts', { enabled: true });
+  check('turning alerts on returns a private topic', on.s === 200 && on.j.enabled && /^polymono-/.test(on.j.topic));
+  check('alert settings are readable', (await call(T.jack, 'GET', '/api/auth/alerts')).j.topic === on.j.topic);
+  alerts.length = 0;
+  await setPlayer('max', { position: 0, is_in_jail: false });
+  await setTurn('max');
+  rolls.push([1, 2]);
+  await act(T.max, 'roll');
+  if ((await state()).game.turn_state.phase === 'buy') await act(T.max, 'decline');
+  await new Promise(r => setTimeout(r, 300));
+  check('jack (offline) gets a your-turn alert', (await state()).game.current_turn_user_id === U.jack &&
+    alerts.some(a => a.topic === on.j.topic && /your turn/i.test(a.body)), JSON.stringify(alerts));
+  check('test alert endpoint works', (await call(T.jack, 'POST', '/api/auth/alerts/test')).s === 200);
+  const off = await call(T.jack, 'POST', '/api/auth/alerts', { enabled: false });
+  check('turning alerts off forgets the topic', off.j.enabled === false && off.j.topic === null);
+  check('spectators have no alerts', (await call(T.spec, 'GET', '/api/auth/alerts')).s === 403);
+}
+
 async function cardText() {
   await setPlayer('max', { position: 4, money: 1000, is_in_jail: false });
   await setTurn('max');
@@ -394,7 +433,7 @@ async function debtDeadlines() {
   await setPlayer('max', { money: 5000 });
   await act(T.max, 'pay-debts');
   await gameController.checkDeadline();
-  check('paying a debt late does not get the turn skipped', (await state()).game.current_turn_user_id === U.max && new Date((await state()).game.turn_deadline) > new Date());
+  check('paying a debt late ends the turn normally with a fresh deadline', (await state()).game.current_turn_user_id === U.jack && new Date((await state()).game.turn_deadline) > new Date());
 
   // A debt left unpaid for a whole extra turn period ends in bankruptcy.
   await setPlayer('max', { position: 34, money: 100 });
@@ -474,13 +513,15 @@ const SCENARIOS = [
   ['debt deadlines', debtDeadlines],
   ['house shortage', houseShortage],
   ['settings and malformed ids', settingsAndIds],
+  ['timeouts play the turn', timeoutsPlayTheTurn],
+  ['phone alerts', phoneAlerts],
   ['chat', chat],
   ['admin', admin],
   ['token revocation', tokenRevocation],
 ];
 
 async function run(ctx) {
-  ({ base, pool, rolls, gameController } = ctx);
+  ({ base, pool, rolls, gameController, alerts } = ctx);
   await setup();
   for (const [title, fn] of SCENARIOS) {
     section(title);

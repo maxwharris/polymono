@@ -49,22 +49,15 @@ app.use('/api/chat', require('./routes/chat'));
 app.use('/api/trade', require('./routes/trade'));
 app.use('/api/admin', require('./routes/admin'));
 
-// Health check for deploys: the database answers, the migrations this code needs are applied, and the
+// Health check for deploys: the database answers, every migration in backend/migrations is applied, and the
 // board is seeded. deployp treats anything but 200 as a failed deploy.
-const REQUIRED_COLUMNS = [
-  ['users', 'token_version'], ['game', 'turn_state'], ['game', 'decks'], ['game', 'version'],
-  ['players', 'ready_to_start'], ['players', 'player_color'], ['trades', 'countered_from']
-];
+const { pendingMigrations } = require('./scripts/migrate');
 app.get('/api/health', async (req, res) => {
   try {
-    const cols = await pool.query(
-      `SELECT table_name || '.' || column_name AS col FROM information_schema.columns WHERE table_schema = 'public'`
-    );
-    const have = new Set(cols.rows.map(r => r.col));
-    const missing = REQUIRED_COLUMNS.map(([t, c]) => `${t}.${c}`).filter(c => !have.has(c));
+    const pending = await pendingMigrations(pool);
     const properties = (await pool.query('SELECT COUNT(*)::int AS n FROM properties')).rows[0].n;
-    const ok = missing.length === 0 && properties === 28;
-    res.status(ok ? 200 : 500).json({ ok, properties, ...(missing.length ? { missingColumns: missing, hint: 'apply backend/migrations' } : {}) });
+    const ok = pending.length === 0 && properties === 28;
+    res.status(ok ? 200 : 500).json({ ok, properties, ...(pending.length ? { pendingMigrations: pending } : {}) });
   } catch (error) {
     res.status(500).json({ ok: false, message: error.message });
   }

@@ -29,6 +29,7 @@ function scriptDice() {
 async function main() {
   const cluster = await startCluster();
   let app = null;
+  let ntfy = null;
   const watchdog = setTimeout(async () => {
     console.error(`\nTimed out after ${TIMEOUT_MS / 1000}s`);
     await cluster.stop().catch(() => {});
@@ -48,10 +49,20 @@ async function main() {
     await seedProperties(db, () => {});
     await db.end();
 
+    // A stand-in ntfy server: phone alerts land here instead of ntfy.sh.
+    const alerts = [];
+    ntfy = require('http').createServer((req, res) => {
+      let body = '';
+      req.on('data', chunk => { body += chunk; });
+      req.on('end', () => { alerts.push({ topic: req.url.slice(1), body }); res.end('{}'); });
+    });
+    await new Promise(resolve => ntfy.listen(0, '127.0.0.1', resolve));
+
     Object.assign(process.env, cluster.env('polymono'), {
       JWT_SECRET: crypto.randomBytes(24).toString('hex'),
       ADMIN_USERS: 'max',
       PORT: '0', // any free port
+      NTFY_BASE: `http://127.0.0.1:${ntfy.address().port}`,
     });
     process.chdir(cluster.dir); // the app's dotenv must not pick up a developer's backend/.env
     const rolls = scriptDice(); // before the server loads: the game code takes rollDice when it is required
@@ -64,6 +75,7 @@ async function main() {
       pool: require('../db'),
       rolls,
       gameController: app.gameController,
+      alerts,
     });
   } finally {
     if (app) {
@@ -71,6 +83,7 @@ async function main() {
       await new Promise(resolve => app.io.close(() => resolve()));
       await require('../db').end().catch(() => {});
     }
+    if (ntfy) ntfy.close();
     await cluster.stop();
   }
   return checks.summary();

@@ -14,13 +14,7 @@ const SCHEMA = fs.readFileSync(path.join(BACKEND, 'schema.sql'), 'utf8');
 
 // Differences between "original schema + every migration" and "schema.sql" that are known and harmless.
 // Each entry must still be a real difference (the test says when one has been fixed, so it can be deleted).
-const KNOWN_DRIFT = [
-  // The column default was never migrated: databases from the original schema still default to the old
-  // settings. Harmless (the single game row is created once and 003 rewrote its settings). To fix, add to a
-  // migration: ALTER TABLE game ALTER COLUMN settings SET DEFAULT
-  //   '{"starting_money": 1500, "go_salary": 200, "turn_hours": 24}'::jsonb;  then delete this entry.
-  'column game.settings default',
-];
+const KNOWN_DRIFT = []; // differences between an upgraded and a fresh database that are accepted on purpose
 
 const quiet = () => {};
 
