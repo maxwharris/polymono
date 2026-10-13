@@ -3,9 +3,9 @@
 # From your Mac, run `deployp` in this repo: it pushes, pulls on the box, runs this, then checks
 # the URLs below. Running it by hand on the box works too. Box conventions: dev-personal/CLAUDE.md
 #
-# check: http://mp.maxharris.io/
-# check: http://mp.maxharris.io/api/health
-# check: http://mp.maxharris.io/socket.io/?EIO=4&transport=polling
+# check: https://mp.maxharris.io/
+# check: https://mp.maxharris.io/api/health
+# check: https://mp.maxharris.io/socket.io/?EIO=4&transport=polling
 #
 # nginx (sites-available/mp.maxharris.io) serves frontend/dist/ and proxies the API and socket.io to :3002.
 # backend/.env and the Postgres database exist only on the box. SQL in backend/migrations/ is applied by hand,
