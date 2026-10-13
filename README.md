@@ -91,15 +91,9 @@ The frontend runs on `http://localhost:5173` and the backend on `http://localhos
 
 ### Using the Deployment Script
 
-A deployment script is provided for EC2 servers using PM2 and Nginx:
-
-```bash
-# Make the script executable
-chmod +x monop.sh
-
-# Run the script
-./monop.sh
-```
+Live at http://mp.maxharris.io, from `/var/www/polymono` on the personal EC2 box. From your Mac, run
+`deployp` in this repo: it pushes, pulls on the box and runs `deploy.sh` there (build, restart
+`monop-backend`), then checks the site. `deploy.sh` can also be run by hand on the box.
 
 ### Manual Deployment
 
