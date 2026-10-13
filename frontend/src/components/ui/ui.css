@@ -1,0 +1,1114 @@
+/* Midnight Deco: shared component classes. Every class is `ui-*`; README.md lists them with one line each.
+ *
+ * All of it sits in the `components` cascade layer (declared in index.css), so any unlayered screen CSS
+ * (game.css, *.module.css) overrides it without specificity fights, and it overrides the base layer.
+ * Tokens come from index.css. Imported once globally by main.jsx (and by each ui component).
+ */
+
+@layer components {
+  /* ================================================================================================= */
+  /* Type                                                                                                */
+  /* ================================================================================================= */
+
+  .ui-display-xl,
+  .ui-display-l,
+  .ui-display-m,
+  .ui-display-s,
+  .ui-headline {
+    font-family: var(--font-display);
+    font-weight: 600;
+    letter-spacing: var(--ls-display);
+    line-height: var(--lh-tight);
+    color: var(--marble);
+  }
+
+  .ui-display-xl { font-size: var(--fs-display-xl); line-height: 1; letter-spacing: 0.02em; }
+  .ui-display-l { font-size: var(--fs-display-l); }
+  .ui-display-m { font-size: var(--fs-display-m); }
+  .ui-display-s { font-size: var(--fs-display-s); line-height: 1; }
+
+  /* The turn panel's headline: one line at 375px (must-fix #1). Longest names: One World Trade Center,
+     Grand Central Station, Meatpacking District. Put the place in the sub line if it still does not fit. */
+  .ui-headline {
+    font-size: clamp(20px, 5.6vw, 25px);
+    line-height: 1.2; /* room for descenders: overflow is hidden */
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    min-width: 0;
+  }
+
+  @media (min-width: 1100px) {
+    .ui-headline { font-size: var(--fs-display-m); }
+  }
+
+  .ui-headline em,
+  .ui-display-m em,
+  .ui-display-l em {
+    font-style: normal;
+    color: var(--brass-300);
+  }
+
+  .ui-body { font: 400 var(--fs-body) / var(--lh-body) var(--font-text); color: var(--limestone); }
+  .ui-label-text { font: 500 var(--fs-label) / var(--lh-snug) var(--font-text); color: var(--marble); }
+  .ui-meta { font: 500 var(--fs-meta) / var(--lh-snug) var(--font-text); color: var(--slate); }
+  .ui-micro { font: 500 var(--fs-micro) / 1 var(--font-text); }
+
+  /* Every amount. Colour is inherited (marble in rows, ink on brass and paper); set it where it differs. */
+  .ui-money {
+    font-family: var(--font-text);
+    font-weight: 600;
+    font-variant-numeric: tabular-nums lining-nums;
+    font-kerning: none; /* Jost kerns "11" even in tabular mode */
+    white-space: nowrap;
+  }
+
+  .ui-money--l { font-size: var(--fs-money-l); }
+  .ui-money--xl { font-size: var(--fs-money-xl); }
+
+  /* A brief flash when cash changes: brass for money in, stop-red for money out. */
+  .ui-money.is-in { animation: ui-flash-in var(--dur-money) ease-out; }
+  .ui-money.is-out { animation: ui-flash-out var(--dur-money) ease-out; }
+
+  /* Countdown urgency without a new accent: slate, brass under 3h (.is-soon), stop-red under 30m
+     (.is-urgent). It never blinks. */
+  .ui-countdown {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font: 500 var(--fs-meta) / 1.1 var(--font-text);
+    font-variant-numeric: tabular-nums lining-nums;
+    font-kerning: none;
+    color: var(--slate);
+    white-space: nowrap;
+  }
+
+  .ui-countdown .ui-icon { width: 14px; height: 14px; }
+  .ui-countdown.is-soon { color: var(--brass-300); }
+  .ui-countdown.is-urgent { color: var(--stop); }
+
+  /* ================================================================================================= */
+  /* Icons and glyphs                                                                                     */
+  /* ================================================================================================= */
+
+  .ui-icon {
+    display: block;
+    flex: none;
+  }
+
+  .ui-glyph {
+    display: block;
+    flex: none;
+    fill: currentColor;
+  }
+
+  /* lib/tokens.js tokenEmoji() shim: a glyph that sits in a line of text where an emoji used to be. */
+  .ui-glyph--inline {
+    display: inline-block;
+    vertical-align: -0.14em;
+    fill: var(--pc, currentColor);
+  }
+
+  /* ================================================================================================= */
+  /* Buttons: primary (flat brass, one per view), secondary (lacquer), ghost (quiet), danger, tint         */
+  /* ================================================================================================= */
+
+  .ui-btn {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-2);
+    min-height: 48px;
+    min-width: var(--hit);
+    padding: 0 18px;
+    border: 0;
+    border-radius: var(--r-control);
+    font: 600 16px / 1.15 var(--font-text);
+    letter-spacing: 0;
+    text-align: center;
+    text-decoration: none;
+    white-space: nowrap;
+    color: var(--marble);
+    background: var(--raised);
+    box-shadow: inset 0 0 0 1px var(--seam-strong);
+    cursor: pointer;
+    user-select: none;
+    -webkit-user-select: none;
+    transition: background-color var(--dur-quick) ease, box-shadow var(--dur-quick) ease, color var(--dur-quick) ease;
+  }
+
+  .ui-btn:focus-visible {
+    outline: var(--focus-ring);
+    outline-offset: 3px;
+  }
+
+  .ui-btn--secondary {
+    color: var(--marble);
+    background: var(--raised);
+    box-shadow: inset 0 0 0 1px var(--seam-strong);
+  }
+
+  /* Near-solid metal with a top highlight: not a gold pill. */
+  .ui-btn--primary {
+    color: var(--on-brass);
+    background: var(--brass-metal);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.45), inset 0 -1px 0 rgba(0, 0, 0, 0.18), 0 1px 0 rgba(0, 0, 0, 0.45);
+  }
+
+  .ui-btn--ghost {
+    min-height: var(--hit);
+    padding: 0 12px;
+    font-weight: 500;
+    font-size: var(--fs-label);
+    color: var(--limestone);
+    background: transparent;
+    box-shadow: none;
+  }
+
+  .ui-btn--ghost .ui-icon { color: var(--slate); }
+
+  .ui-btn--danger {
+    color: var(--stop);
+    background: transparent;
+    box-shadow: inset 0 0 0 1px var(--stop-line);
+  }
+
+  /* Filled stop-red: only for the destructive button in a confirm dialog. */
+  .ui-btn--danger-solid {
+    color: var(--stop-ink);
+    background: var(--stop);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.3);
+  }
+
+  /* Brass-tinted: a secondary action that should still read as the way forward (toast "Review the offer"). */
+  .ui-btn--tint {
+    min-height: var(--hit);
+    padding: 0 14px;
+    font-size: var(--fs-label);
+    color: var(--brass-300);
+    background: var(--brass-wash);
+    box-shadow: none;
+  }
+
+  .ui-btn--lg { min-height: 56px; font-size: 17px; }
+  .ui-btn--sm { min-height: var(--hit); padding: 0 14px; font-size: var(--fs-label); }
+  .ui-btn--block { display: flex; width: 100%; }
+
+  /* A round 44px icon button (close, menu). Give it an aria-label. */
+  .ui-btn--icon {
+    width: var(--hit);
+    min-width: var(--hit);
+    min-height: var(--hit);
+    height: var(--hit);
+    padding: 0;
+    border-radius: 50%;
+    color: var(--limestone);
+    background: rgba(255, 255, 255, 0.04);
+    box-shadow: inset 0 0 0 1px var(--seam);
+  }
+
+  .ui-btn--icon.ui-btn--ghost { background: transparent; box-shadow: none; }
+
+  /* Two lines inside a button: "Buy for $200" over "Leaves you $1,160". */
+  .ui-btn__stack {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+  }
+
+  .ui-btn__sub {
+    font: 500 13px / 1 var(--font-text);
+    color: var(--limestone);
+  }
+
+  .ui-btn--primary .ui-btn__sub { color: rgba(18, 26, 44, 0.74); }
+
+  @media (hover: hover) and (pointer: fine) {
+    .ui-btn:hover:not(:disabled, [aria-disabled='true']) { background-color: var(--raised-hover); }
+    .ui-btn--primary:hover:not(:disabled, [aria-disabled='true']) { background-color: var(--brass-metal-hover); }
+    .ui-btn--ghost:hover:not(:disabled, [aria-disabled='true']) { background-color: rgba(255, 255, 255, 0.04); color: var(--marble); }
+    .ui-btn--danger:hover:not(:disabled, [aria-disabled='true']) { background-color: rgba(255, 122, 107, 0.08); }
+    .ui-btn--danger-solid:hover:not(:disabled, [aria-disabled='true']) { background-color: #FF8C7F; }
+    .ui-btn--tint:hover:not(:disabled, [aria-disabled='true']) { background-color: rgba(215, 180, 106, 0.2); }
+  }
+
+  .ui-btn:active:not(:disabled, [aria-disabled='true']) { background-color: var(--raised-hover); }
+  .ui-btn--primary:active:not(:disabled, [aria-disabled='true']) { background-color: var(--brass-metal-pressed); }
+  .ui-btn--ghost:active:not(:disabled, [aria-disabled='true']) { background-color: rgba(255, 255, 255, 0.06); }
+
+  /* A blocked action stays visible and disabled, with the server's reason underneath (.ui-reason). */
+  .ui-btn:disabled,
+  .ui-btn[aria-disabled='true'] {
+    color: var(--disabled-fg);
+    background: var(--disabled-bg);
+    box-shadow: inset 0 0 0 1px var(--seam);
+    cursor: not-allowed;
+  }
+
+  .ui-btn--ghost:disabled,
+  .ui-btn--ghost[aria-disabled='true'] {
+    background: transparent;
+    box-shadow: none;
+  }
+
+  .ui-btn:disabled .ui-icon,
+  .ui-btn[aria-disabled='true'] .ui-icon,
+  .ui-btn:disabled .ui-btn__sub,
+  .ui-btn[aria-disabled='true'] .ui-btn__sub { color: inherit; }
+
+  .ui-reason {
+    margin-top: 6px;
+    font: 500 var(--fs-meta) / 1.3 var(--font-text);
+    color: var(--slate);
+  }
+
+  .ui-spinner {
+    display: inline-block;
+    flex: none;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    border: 2px solid currentColor;
+    border-right-color: transparent;
+    animation: spin 0.8s linear infinite;
+  }
+
+  /* ================================================================================================= */
+  /* Surfaces: panel (docked lacquer), sheet, modal, popover menu, toast, row, well, paper                  */
+  /* ================================================================================================= */
+
+  /* Docked lacquer panel (the phone turn panel): 22px top corners, a brass inlay along the top edge. */
+  .ui-panel {
+    position: relative;
+    padding: 16px var(--gutter) 6px;
+    color: var(--marble);
+    background: var(--lacquer);
+    border-radius: var(--r-panel) var(--r-panel) 0 0;
+    box-shadow: var(--shadow-docked);
+  }
+
+  .ui-panel::before {
+    content: '';
+    position: absolute;
+    left: 22px;
+    right: 22px;
+    top: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--brass-600) 18%, var(--brass-600) 82%, transparent);
+    pointer-events: none;
+  }
+
+  /* Lifted, floating version (the desktop turn panel, 620px over the table). */
+  .ui-panel--float {
+    padding: 16px 18px 6px;
+    border-radius: var(--r-dialog);
+    box-shadow: var(--shadow-lifted-lg);
+  }
+
+  .ui-panel--float::before { display: none; }
+
+  .ui-pane-title {
+    font: 600 var(--fs-display-s) / 1 var(--font-display);
+    letter-spacing: var(--ls-display);
+    color: var(--marble);
+  }
+
+  /* Bottom sheet on phone, centred dialog from 900px. Works on a <dialog> (showModal) or a plain element. */
+  .ui-sheet {
+    position: fixed;
+    inset: auto 0 0 0;
+    margin: 0;
+    width: 100%;
+    max-width: 100%;
+    max-height: calc(100dvh - 24px - var(--safe-top));
+    padding: 0 var(--gutter) calc(16px + var(--safe-bottom));
+    overflow: auto;
+    overscroll-behavior: contain;
+    color: var(--marble);
+    background: var(--raised);
+    border: 0;
+    border-radius: var(--r-sheet) var(--r-sheet) 0 0;
+    box-shadow: var(--shadow-sheet);
+  }
+
+  dialog.ui-sheet:not([open]) { display: none; }
+  dialog.ui-sheet[open] { animation: ui-sheet-in var(--dur-sheet) var(--ease-out); }
+  .ui-sheet::backdrop { background: var(--scrim); }
+  dialog.ui-sheet[open]::backdrop { animation: ui-fade-in var(--dur-sheet) ease-out; }
+
+  .ui-sheet__grab {
+    width: 40px;
+    height: 5px;
+    margin: 8px auto 4px;
+    border-radius: 3px;
+    background: var(--offline);
+  }
+
+  .ui-sheet__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+    min-height: 56px;
+  }
+
+  .ui-sheet__title {
+    font: 600 30px / 1 var(--font-display);
+    letter-spacing: 0.01em;
+    color: var(--marble);
+  }
+
+  .ui-sheet__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: var(--space-4);
+  }
+
+  .ui-sheet__actions > .ui-btn:not(.ui-btn--ghost) { flex: 1 1 0; }
+
+  @media (min-width: 900px) {
+    .ui-sheet {
+      inset: 0;
+      margin: auto;
+      width: min(560px, calc(100% - 48px));
+      height: fit-content;
+      max-height: calc(100dvh - 48px);
+      padding: 4px 24px 24px;
+      border-radius: var(--r-dialog);
+      box-shadow: var(--shadow-lifted-lg);
+    }
+
+    .ui-sheet__grab { display: none; }
+    dialog.ui-sheet[open] { animation: ui-pop-in var(--dur-base) var(--ease-out); }
+  }
+
+  /* Centred dialog at every width (confirmations). */
+  .ui-modal {
+    position: fixed;
+    inset: 0;
+    margin: auto;
+    width: min(560px, calc(100% - 32px));
+    height: fit-content;
+    max-height: calc(100dvh - 32px);
+    padding: 20px;
+    overflow: auto;
+    color: var(--marble);
+    background: var(--raised);
+    border: 0;
+    border-radius: var(--r-dialog);
+    box-shadow: var(--shadow-lifted-lg);
+  }
+
+  dialog.ui-modal:not([open]) { display: none; }
+  dialog.ui-modal[open] { animation: ui-pop-in var(--dur-base) var(--ease-out); }
+  .ui-modal::backdrop { background: var(--scrim); }
+
+  .ui-modal__title {
+    font: 600 26px / 1.05 var(--font-display);
+    letter-spacing: 0.01em;
+  }
+
+  .ui-modal__body {
+    margin-top: var(--space-2);
+    font: 400 var(--fs-body) / var(--lh-body) var(--font-text);
+    color: var(--limestone);
+  }
+
+  .ui-modal__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: var(--space-5);
+  }
+
+  .ui-modal__actions > .ui-btn { flex: 1 1 0; }
+
+  .ui-scrim {
+    position: fixed;
+    inset: 0;
+    background: var(--scrim);
+    animation: ui-fade-in var(--dur-sheet) ease-out;
+  }
+
+  /* Lifted popover with icon rows (the account menu). */
+  .ui-menu {
+    min-width: 220px;
+    padding: 6px;
+    color: var(--marble);
+    background: var(--raised);
+    border: 0;
+    border-radius: var(--r-toast);
+    box-shadow: var(--shadow-lifted);
+  }
+
+  .ui-menu__item {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    width: 100%;
+    min-height: 48px;
+    padding: 0 12px;
+    border-radius: 10px;
+    font: 500 var(--fs-label) / 1.2 var(--font-text);
+    color: var(--marble);
+    text-align: left;
+    background: transparent;
+  }
+
+  .ui-menu__item .ui-icon { color: var(--slate); }
+  .ui-menu__item--danger,
+  .ui-menu__item--danger .ui-icon { color: var(--stop); }
+  .ui-menu__item:focus-visible { outline-offset: -2px; }
+
+  @media (hover: hover) and (pointer: fine) {
+    .ui-menu__item:hover { background: rgba(255, 255, 255, 0.05); }
+  }
+
+  .ui-menu__sep {
+    height: 1px;
+    margin: 6px 8px;
+    background: var(--seam);
+  }
+
+  /* Toast: a lifted card under the top bar (phone) or top right (desktop, 360 wide). */
+  .ui-toast {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    align-items: start;
+    gap: 2px 10px;
+    padding: 12px 4px 10px 12px;
+    color: var(--marble);
+    background: var(--raised);
+    border-radius: var(--r-toast);
+    box-shadow: inset 0 0 0 1px var(--seam), inset 0 1px 0 var(--brass-600), 0 18px 40px rgba(0, 0, 0, 0.6);
+    animation: ui-toast-in var(--dur-base) var(--ease-out);
+  }
+
+  .ui-toast--error { box-shadow: inset 0 0 0 1px var(--seam), inset 0 2px 0 var(--stop), 0 18px 40px rgba(0, 0, 0, 0.6); }
+  .ui-toast--plain { grid-template-columns: 1fr auto; padding-left: 16px; }
+  .ui-toast__title { font: 600 var(--fs-label) / 1.25 var(--font-text); color: var(--marble); }
+  .ui-toast__body { margin-top: 2px; font: 400 14px / 1.35 var(--font-text); color: var(--limestone); }
+  .ui-toast__time { margin-top: 2px; font: 500 var(--fs-meta) / 1.2 var(--font-text); color: var(--slate); }
+  .ui-toast__actions { grid-column: 2 / -1; display: flex; flex-wrap: wrap; gap: var(--space-2); margin-top: var(--space-2); }
+  .ui-toast--plain .ui-toast__actions { grid-column: 1 / -1; }
+  .ui-toast__close { margin-top: -8px; color: var(--slate); }
+
+  /* Flush list row: no card, 12 x 16 padding, a seam underneath. `.is-current` = whose turn (needs --pc). */
+  .ui-row {
+    position: relative;
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: center;
+    gap: var(--space-3);
+    width: 100%;
+    min-height: 56px;
+    padding: 12px 16px;
+    color: var(--marble);
+    text-align: left;
+    background: transparent;
+    border-bottom: 1px solid var(--seam);
+  }
+
+  .ui-row.is-current { background: var(--raised); }
+
+  .ui-row.is-current::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 3px;
+    background: var(--pc, var(--brass-400));
+  }
+
+  button.ui-row:focus-visible { outline-offset: -2px; }
+
+  @media (hover: hover) and (pointer: fine) {
+    button.ui-row:hover { background: rgba(255, 255, 255, 0.03); }
+    button.ui-row.is-current:hover { background: var(--raised-hover); }
+  }
+
+  /* A calm note ("Nothing needs you right now"), and its brass version ("4 new since you last looked"). */
+  .ui-well {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    padding: 10px 12px;
+    font: 400 14px / 1.35 var(--font-text);
+    color: var(--limestone);
+    background: var(--well);
+    border-radius: var(--r-control);
+  }
+
+  .ui-well .ui-icon { flex: none; color: var(--slate); }
+
+  .ui-well--brass {
+    font-weight: 500;
+    color: var(--brass-300);
+    background: rgba(215, 180, 106, 0.1);
+  }
+
+  .ui-well--brass .ui-icon { color: var(--brass-300); }
+
+  .ui-divider {
+    height: 1px;
+    border: 0;
+    background: var(--seam);
+  }
+
+  /* "Seen before": a double hairline with a centred label. */
+  .ui-divider--label {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    height: auto;
+    background: none;
+    font: 500 12px / 1 var(--font-text);
+    color: var(--slate);
+  }
+
+  .ui-divider--label::before,
+  .ui-divider--label::after {
+    content: '';
+    flex: 1;
+    height: 3px;
+    border-top: 1px solid var(--seam);
+    border-bottom: 1px solid var(--seam);
+  }
+
+  /* Paper: deeds, cards. A framed inner panel sits inside 7px of stock. */
+  .ui-paper {
+    padding: 7px;
+    color: var(--ink);
+    background: var(--paper);
+    border-radius: var(--r-deed);
+    box-shadow: var(--shadow-paper);
+  }
+
+  .ui-paper__in {
+    overflow: hidden;
+    border: 1px solid var(--paper-line);
+    border-radius: var(--r-deed-in);
+  }
+
+  /* ================================================================================================= */
+  /* Small parts: badge, dot, tag, chip, swatch, meter, dice                                              */
+  /* ================================================================================================= */
+
+  .ui-badge {
+    display: inline-grid;
+    place-items: center;
+    min-width: 19px;
+    height: 19px;
+    padding: 0 5px;
+    border-radius: 10px;
+    font: 700 11px / 1 var(--font-text);
+    font-variant-numeric: tabular-nums lining-nums;
+    font-kerning: none;
+    color: var(--stop-ink);
+    background: var(--stop);
+  }
+
+  .ui-badge--brass { color: var(--on-brass); background: var(--brass-300); }
+
+  /* "Needs you": an 8px brass dot. */
+  .ui-dot {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--brass-300);
+    box-shadow: 0 0 0 2px var(--lacquer);
+  }
+
+  .ui-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    padding: 3px 6px;
+    border-radius: var(--r-tag);
+    font: 500 12px / 1 var(--font-text);
+    color: var(--brass-300);
+    box-shadow: inset 0 0 0 1px var(--brass-600);
+    white-space: nowrap;
+  }
+
+  .ui-tag--stop { color: var(--stop); box-shadow: inset 0 0 0 1px rgba(255, 122, 107, 0.5); }
+  .ui-tag--go { color: var(--go); box-shadow: inset 0 0 0 1px rgba(82, 201, 140, 0.5); }
+  .ui-tag--quiet { color: var(--limestone); box-shadow: inset 0 0 0 1px var(--seam-strong); }
+  .ui-tag--ink { font-weight: 600; font-size: 11px; color: var(--paper); background: var(--ink); box-shadow: none; border-radius: 4px; }
+
+  /* A player chip ("Here now"): medallion 28 + name. */
+  .ui-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    min-height: 34px;
+    padding: 3px 12px 3px 3px;
+    border-radius: var(--r-round);
+    font: 600 14px / 1 var(--font-text);
+    color: var(--marble);
+    background: var(--raised);
+    box-shadow: inset 0 0 0 1px var(--seam);
+    white-space: nowrap;
+  }
+
+  /* A colour-group swatch: always beside the group or property name, always with the light inner ring. */
+  .ui-swatch {
+    display: inline-block;
+    flex: none;
+    width: 12px;
+    height: 12px;
+    border-radius: 2.5px;
+    background: var(--g, var(--seam-strong));
+    box-shadow: inset 0 0 0 1px var(--swatch-ring);
+  }
+
+  .ui-swatch--lg { width: 16px; height: 16px; border-radius: 3px; }
+
+  /* Brass meter: cash toward a debt. Set --value (0%–100%) on the element. */
+  .ui-meter {
+    height: 8px;
+    overflow: hidden;
+    border-radius: 4px;
+    background: var(--well);
+    box-shadow: inset 0 0 0 1px var(--seam);
+  }
+
+  .ui-meter::before {
+    content: '';
+    display: block;
+    width: var(--value, 0%);
+    height: 100%;
+    border-radius: 4px;
+    background: linear-gradient(90deg, var(--brass-500), var(--brass-300));
+    transition: width var(--dur-money) var(--ease-out);
+  }
+
+  /* Paper dice: <span class="ui-dice" role="img" aria-label="Rolled 4 and 3"><span class="ui-die" data-value="4">
+     with nine <i> children; the pips that show are chosen by data-value. */
+  .ui-dice { display: inline-flex; gap: 6px; }
+
+  .ui-die {
+    display: grid;
+    grid-template: repeat(3, 1fr) / repeat(3, 1fr);
+    width: 28px;
+    height: 28px;
+    padding: 4px;
+    border-radius: 7px;
+    background: var(--paper);
+    box-shadow: inset 0 -2px 0 rgba(0, 0, 0, 0.14), 0 3px 8px rgba(0, 0, 0, 0.45);
+  }
+
+  .ui-die > i {
+    display: block;
+    width: 5px;
+    height: 5px;
+    margin: auto;
+    border-radius: 50%;
+  }
+
+  .ui-die[data-value='1'] > i:nth-child(5),
+  .ui-die[data-value='2'] > i:is(:nth-child(1), :nth-child(9)),
+  .ui-die[data-value='3'] > i:is(:nth-child(1), :nth-child(5), :nth-child(9)),
+  .ui-die[data-value='4'] > i:is(:nth-child(1), :nth-child(3), :nth-child(7), :nth-child(9)),
+  .ui-die[data-value='5'] > i:is(:nth-child(1), :nth-child(3), :nth-child(5), :nth-child(7), :nth-child(9)),
+  .ui-die[data-value='6'] > i:is(:nth-child(1), :nth-child(3), :nth-child(4), :nth-child(6), :nth-child(7), :nth-child(9)) {
+    background: var(--pip);
+  }
+
+  /* ================================================================================================= */
+  /* Controls: underline tabs, segmented control, fields, switch                                           */
+  /* ================================================================================================= */
+
+  /* Underline tabs (Activity / Chat). Mark the active one with aria-selected="true" or .is-on. */
+  .ui-tabs {
+    display: flex;
+    gap: 4px;
+    border-bottom: 1px solid var(--seam);
+  }
+
+  .ui-tabs > button {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    height: 48px;
+    padding: 0 12px;
+    font: 500 var(--fs-label) / 1 var(--font-text);
+    color: var(--limestone);
+  }
+
+  .ui-tabs > button:is([aria-selected='true'], .is-on) {
+    font-weight: 600;
+    color: var(--marble);
+  }
+
+  .ui-tabs > button:is([aria-selected='true'], .is-on)::after {
+    content: '';
+    position: absolute;
+    left: 12px;
+    right: 12px;
+    bottom: -1px;
+    height: 2px;
+    background: var(--brass-300);
+  }
+
+  .ui-tabs > button:focus-visible { outline-offset: -2px; }
+
+  /* Segmented control: 44px segments in a well, the active one raised. aria-selected / aria-pressed / .is-on. */
+  .ui-seg {
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: 1fr;
+    padding: 3px;
+    border-radius: 13px;
+    background: var(--well);
+    box-shadow: inset 0 0 0 1px var(--seam);
+  }
+
+  .ui-seg > button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    min-width: 0;
+    height: var(--hit);
+    padding: 0 6px;
+    border-radius: 10px;
+    font: 500 14px / 1 var(--font-text);
+    color: var(--limestone);
+    white-space: nowrap;
+  }
+
+  .ui-seg > button:is([aria-selected='true'], [aria-pressed='true'], .is-on) {
+    font-weight: 600;
+    color: var(--marble);
+    background: var(--raised);
+    box-shadow: inset 0 0 0 1px var(--seam-strong), 0 2px 6px rgba(0, 0, 0, 0.35);
+  }
+
+  .ui-seg .ui-badge { min-width: 18px; height: 18px; color: var(--on-brass); background: var(--brass-300); }
+
+  .ui-field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .ui-label {
+    font: 500 14px / 1.2 var(--font-text);
+    color: var(--limestone);
+  }
+
+  .ui-hint {
+    font: 400 var(--fs-meta) / 1.35 var(--font-text);
+    color: var(--slate);
+  }
+
+  .ui-error {
+    display: flex;
+    align-items: flex-start;
+    gap: 6px;
+    font: 500 14px / 1.35 var(--font-text);
+    color: var(--stop);
+  }
+
+  /* A text input with a prefix ("$") or a trailing text action ("Show"): the wrapper is the field. */
+  .ui-input {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    min-height: 52px;
+    padding: 0 0 0 14px;
+    font: 400 var(--fs-input) / 1 var(--font-text);
+    color: var(--marble);
+    background: var(--well);
+    border-radius: var(--r-control);
+    box-shadow: inset 0 0 0 1px var(--seam-strong);
+  }
+
+  .ui-input:focus-within {
+    box-shadow: inset 0 0 0 1.5px var(--brass-300);
+    outline: var(--focus-ring);
+    outline-offset: 2px;
+  }
+
+  .ui-input > input {
+    flex: 1;
+    min-width: 0;
+    min-height: 50px;
+    padding: 0 14px 0 0;
+    background: transparent;
+    box-shadow: none;
+    border-radius: 0;
+    outline: none;
+  }
+
+  .ui-input > input:focus {
+    box-shadow: none;
+    outline: none;
+  }
+
+  .ui-input__pre { color: var(--slate); }
+
+  .ui-input__act {
+    align-self: stretch;
+    min-width: var(--hit);
+    padding: 0 14px;
+    font: 500 var(--fs-label) / 1 var(--font-text);
+    color: var(--brass-300);
+    border-radius: 0 var(--r-control) var(--r-control) 0;
+  }
+
+  .ui-input__act:focus-visible { outline-offset: -3px; }
+
+  /* Switch: <button role="switch" aria-checked> (on is --go). The hit area grows to 44px. */
+  .ui-switch {
+    position: relative;
+    flex: none;
+    width: 52px;
+    height: 32px;
+    border-radius: 16px;
+    background: #2A3858;
+    box-shadow: inset 0 0 0 1px var(--seam-strong);
+    transition: background-color var(--dur-base) ease;
+  }
+
+  .ui-switch::before {
+    content: '';
+    position: absolute;
+    top: 3px;
+    left: 3px;
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    background: var(--marble);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.4);
+    transition: transform var(--dur-base) var(--ease-out);
+  }
+
+  .ui-switch::after {
+    content: '';
+    position: absolute;
+    inset: -6px;
+  }
+
+  .ui-switch[aria-checked='true'] { background: var(--go); box-shadow: none; }
+  .ui-switch[aria-checked='true']::before { transform: translateX(20px); }
+
+  /* ================================================================================================= */
+  /* Medallion (Medallion.jsx)                                                                           */
+  /* ================================================================================================= */
+
+  .ui-med {
+    --med-s: 36px;
+    --pc: var(--slate);
+    --ring: 2px;
+    position: relative;
+    flex: none;
+    display: inline-grid;
+    place-items: center;
+    width: var(--med-s);
+    height: var(--med-s);
+    border-radius: 50%;
+    color: var(--pc);
+    background: var(--medal);
+    /* the ring in the player's colour, then a 1.5px room-coloured gap inside it */
+    box-shadow: inset 0 0 0 var(--ring) var(--pc), inset 0 0 0 calc(var(--ring) + 1.5px) var(--room), 0 1px 0 rgba(0, 0, 0, 0.4);
+  }
+
+  .ui-med--sm { --ring: 1.5px; }
+
+  .ui-med__glyph {
+    width: calc(var(--med-s) * 0.66);
+    height: calc(var(--med-s) * 0.66);
+  }
+
+  .ui-med__icon {
+    width: calc(var(--med-s) * 0.5);
+    height: calc(var(--med-s) * 0.5);
+  }
+
+  /* Whose turn: an outer brass ring outside a room-coloured gap. */
+  .ui-med.is-current {
+    box-shadow: inset 0 0 0 var(--ring) var(--pc), inset 0 0 0 calc(var(--ring) + 1.5px) var(--room), 0 0 0 2px var(--room), 0 0 0 3.5px var(--brass-400);
+  }
+
+  /* Bankrupt: slate, thin outline. */
+  .ui-med.is-out {
+    color: var(--slate);
+    box-shadow: inset 0 0 0 1.5px var(--seam-strong);
+  }
+
+  .ui-med__dot {
+    position: absolute;
+    right: -1px;
+    bottom: -1px;
+    width: max(8px, calc(var(--med-s) * 0.26));
+    height: max(8px, calc(var(--med-s) * 0.26));
+    max-width: 11px;
+    max-height: 11px;
+    border-radius: 50%;
+    background: var(--offline);
+    box-shadow: 0 0 0 2px var(--room);
+  }
+
+  .ui-med__dot.is-on { background: var(--go); }
+
+  /* A medallion as a 44px button (the top bar's account menu). */
+  .ui-med-btn {
+    display: inline-grid;
+    place-items: center;
+    width: var(--hit);
+    height: var(--hit);
+    border-radius: 50%;
+  }
+
+  /* ================================================================================================= */
+  /* Turn dial (TurnDial.jsx)                                                                             */
+  /* ================================================================================================= */
+
+  .ui-dial {
+    display: block;
+    flex: none;
+    overflow: visible;
+  }
+
+  .ui-dial__plate { fill: var(--dial-plate); stroke: var(--brass-600); stroke-width: 1.3; }
+  .ui-dial__rule { fill: none; stroke: var(--brass-800); stroke-width: 1; }
+  .ui-dial__rays { fill: none; stroke: var(--brass-500); stroke-width: 1; opacity: 0.38; }
+  .ui-dial__base { fill: none; stroke: var(--brass-600); stroke-width: 1.3; }
+  .ui-dial__hub { fill: var(--brass-400); stroke: var(--room); stroke-width: 1.4; }
+  .ui-dial__pin { fill: var(--room); }
+  .ui-dial__you { fill: var(--brass-300); }
+
+  .ui-dial__seg {
+    fill: var(--pc);
+    opacity: 0.3;
+    transition: opacity var(--dur-base) ease, fill var(--dur-base) ease;
+  }
+
+  /* At phone size only the current segment is lit; the rest are plain seam (must-fix #3). */
+  .ui-dial--current .ui-dial__seg { fill: #22304A; opacity: 1; }
+  .ui-dial__seg.is-on,
+  .ui-dial--current .ui-dial__seg.is-on { fill: var(--pc); opacity: 1; }
+
+  /* Out of the game: a dashed empty segment. */
+  .ui-dial__seg.is-out,
+  .ui-dial--current .ui-dial__seg.is-out {
+    fill: none;
+    stroke: var(--seam-strong);
+    stroke-width: 1;
+    stroke-dasharray: 2 2;
+    opacity: 0.9;
+  }
+
+  .ui-dial__needle {
+    fill: var(--brass-300);
+    stroke: var(--room);
+    stroke-width: 0.7;
+    transform-box: view-box;
+    transform-origin: 60px 60px;
+    transition: transform var(--dur-needle) var(--ease-needle);
+  }
+
+  /* ================================================================================================= */
+  /* Wordmark (Wordmark.jsx)                                                                              */
+  /* ================================================================================================= */
+
+  .ui-wordmark {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 14px;
+    min-width: 0;
+  }
+
+  .ui-wordmark__name {
+    font: 600 22px / 1 var(--font-display);
+    letter-spacing: 0.02em;
+    color: var(--marble);
+    white-space: nowrap;
+  }
+
+  .ui-wordmark--sm .ui-wordmark__name { font-size: 22px; }
+  .ui-wordmark--md .ui-wordmark__name { font-size: 26px; }
+  .ui-wordmark--lg .ui-wordmark__name { font-size: 36px; }
+  .ui-wordmark--xl .ui-wordmark__name { font-size: var(--fs-display-xl); }
+
+  .ui-wordmark__sub {
+    font: 500 16px / 1 var(--font-text);
+    color: var(--brass-300);
+    white-space: nowrap;
+  }
+
+  .ui-wordmark--inline {
+    flex-direction: row;
+    align-items: center;
+    gap: 14px;
+    max-width: 100%;
+  }
+
+  .ui-wordmark--inline .ui-wordmark__sub {
+    display: inline-flex;
+    align-items: center;
+    gap: 14px;
+    min-width: 0;
+    font-size: var(--fs-meta);
+    color: var(--slate);
+  }
+
+  .ui-wordmark__sub > span {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .ui-wordmark--inline .ui-wordmark__sub::before {
+    content: '';
+    width: 1px;
+    height: 22px;
+    background: var(--seam);
+  }
+}
+
+/* ---- motion -------------------------------------------------------------------------------------------- */
+
+@keyframes ui-fade-in {
+  from { opacity: 0; }
+}
+
+@keyframes ui-sheet-in {
+  from { transform: translateY(100%); }
+}
+
+@keyframes ui-pop-in {
+  from { opacity: 0; transform: translateY(8px) scale(0.98); }
+}
+
+@keyframes ui-toast-in {
+  from { opacity: 0; transform: translateY(-12px); }
+}
+
+@keyframes ui-flash-in {
+  from { color: var(--brass-300); text-shadow: 0 0 12px rgba(235, 211, 160, 0.6); }
+}
+
+@keyframes ui-flash-out {
+  from { color: var(--stop); }
+}
+
+/* Reduced motion: no transforms. The needle jumps (--dur-needle is 0 in index.css), sheets and toasts fade. */
+@media (prefers-reduced-motion: reduce) {
+  @layer components {
+    dialog.ui-sheet[open],
+    dialog.ui-modal[open],
+    .ui-toast { animation-name: ui-fade-in; }
+    .ui-dial__needle,
+    .ui-switch::before { transition: none; }
+  }
+}

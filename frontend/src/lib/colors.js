@@ -1,12 +1,13 @@
-// Player colors, chosen to stay readable (3:1 or better) on the dark green UI.
+// Player colors (Midnight Deco). Each passes 4.5:1 as text on the lacquer UI (#101A2D), so a name can be
+// set in its player's color. index.css mirrors them as --p-red ... --p-gray.
 export const PLAYER_COLORS = {
-  red: '#FF6B6B',
-  blue: '#4EA8DE',
-  green: '#2EC4B6',
-  yellow: '#FFD166',
-  purple: '#C77DFF',
-  orange: '#FF9F1C',
-  gray: '#B0B8B4'
+  red: '#FF6B5E',
+  blue: '#5EA8FF',
+  green: '#3DD68C',
+  yellow: '#FFD447',
+  purple: '#B78CFF',
+  orange: '#FF9640',
+  gray: '#9AA3B5'
 };
 
 const ORDER = ['red', 'blue', 'green', 'yellow', 'purple', 'orange'];

@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { Suspense, lazy, useEffect } from 'react';
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { useShallow } from 'zustand/react/shallow';
 import useGameStore from './store/gameStore';
@@ -9,12 +9,17 @@ import Admin from './components/Admin';
 import AppBoundary from './components/AppBoundary';
 import Toaster from './components/game/Toaster';
 import ConnectionBanner from './components/game/ConnectionBanner';
+import Wordmark from './components/ui/Wordmark';
+
+// Dev only: /specimen renders every token, icon, medallion, dial and surface of the design system.
+// import.meta.env.DEV is false in a build, so the page is not bundled.
+const Specimen = import.meta.env.DEV ? lazy(() => import('./components/ui/Specimen')) : null;
 
 function Splash({ text, actions = false }) {
   const { resync, logout } = useGameStore(useShallow(s => ({ resync: s.resync, logout: s.logout })));
   return (
     <div className="splash" role="status">
-      <img src="/polymono-logo.webp" alt="" className="splash-logo" width="160" height="87" onError={(e) => { e.currentTarget.hidden = true; }} />
+      <Wordmark size="lg" />
       <p className="splash-text">{text}</p>
       {actions && (
         <div className="splash-actions">
@@ -45,6 +50,7 @@ export default function App() {
     <BrowserRouter>
       <Routes>
         <Route path="/admin" element={<AppBoundary><Admin /></AppBoundary>} />
+        {Specimen && <Route path="/specimen" element={<Suspense fallback={null}><Specimen /></Suspense>} />}
         <Route path="/" element={<AppBoundary><GameRouter /></AppBoundary>} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

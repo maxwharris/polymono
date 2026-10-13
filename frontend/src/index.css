@@ -1,67 +1,165 @@
-/* Polymono: Manhattan Edition. Design tokens and base element styles.
+/* Polymono: Manhattan Edition. "Midnight Deco" design tokens and base element styles.
  *
- * Element and utility styles live in the `base` cascade layer, so any component class (CSS modules,
- * game.css, all unlayered) overrides them without specificity fights. Tokens stay on :root.
+ * Manhattan after dark: night lacquer and brass chrome around a bright, paper-like board. Dark only.
+ * Every token is listed with one line each in src/components/ui/README.md.
+ *
+ * Cascade layers, lowest first:
+ *   base        element defaults and tiny utilities (this file)
+ *   components  shared component classes, `ui-*` (src/components/ui/ui.css)
+ *   (unlayered) screen CSS: game.css, *.module.css. Unlayered rules beat both layers without specificity fights.
  */
 
-@layer base;
+@layer base, components;
 
 :root {
-  /* Brand palette */
-  --monopoly-red: #E31E24;
-  --monopoly-dark-red: #B71C1C;
-  --monopoly-green: #1B5E20;
-  --monopoly-dark-green: #0D3B11;
-  --monopoly-beige: #F5E6D3;
-  --monopoly-cream: #FFF8E7;
-  --monopoly-gold: #D4AF37;
-  --monopoly-dark-gold: #B8932B;
+  /* ---- room and lacquer ------------------------------------------------------------------------------ */
+  --room: #0A1120;          /* app background, behind everything */
+  --table: #0E1A33;         /* board table, centre */
+  --table-edge: #060B16;    /* board table, edge */
+  --lacquer: #101A2D;       /* top bar, tab bar, turn panel, side columns */
+  --raised: #172338;        /* sheets, toasts, dialogs, the current player's row, selected segments */
+  --raised-hover: #1D2B45;  /* hover and pressed state of raised controls */
+  --well: #0C1526;          /* inputs, segmented-control track, calm notes */
+  --seam: #24324D;          /* hairlines (decorative: never the only edge of a control) */
+  --seam-strong: #5C6E94;   /* control outlines: 3.4:1 on lacquer, 3.1:1 on raised (design's #5A6C92, nudged) */
+  --medal: #16213A;         /* the medallion coin */
+  --dial-plate: #0D1729;    /* the turn dial's plate */
+  --scrim: rgba(4, 7, 13, 0.62);
 
-  /* UI colors */
-  --bg-primary: #0A3D2C;
-  --bg-secondary: #144634;
-  --bg-card: #1E5742;
-  --card-bg: var(--bg-card); /* older components referenced this name */
-  --bg-hover: #27684F;
-  --bg-deep: #072B1F;
-  --text-primary: #FFFFFF;
-  --text-secondary: #D0E9DC;
-  --text-muted: #B3D1C2; /* 5:1 on --bg-card */
-  --border-color: #2D7A5A;
-  --line: rgba(255, 255, 255, 0.12);
-  --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.2);
-  --shadow-md: 0 4px 8px rgba(0, 0, 0, 0.3);
-  --shadow-lg: 0 8px 16px rgba(0, 0, 0, 0.4);
-  --shadow-xl: 0 18px 48px rgba(0, 0, 0, 0.5);
+  /* ---- text (contrast on lacquer) ------------------------------------------------------------------- */
+  --marble: #F3EFE7;        /* primary, 15.2:1 */
+  --limestone: #B9C1D1;     /* secondary, 9.6:1 */
+  --slate: #8F9BB3;         /* tertiary (times, hints, inactive tabs), 6.2:1; 5.6:1 on raised */
 
-  /* Semantic */
-  --gold: var(--monopoly-gold);
-  --gold-bright: #F0CD5C;
-  --ink: #0B2A1E; /* text on gold and cream */
-  --danger: #E5484D;
-  --danger-text: #FF8F8F;
-  --success: #3DD68C;
-  --warn: #FFB224;
-  --info: #4EA8DE;
+  /* ---- brass ---------------------------------------------------------------------------------------- */
+  --brass-200: #F3E3BD;     /* focus ring */
+  --brass-300: #EBD3A0;     /* brass text: "Your turn", active tab, set notes, links (11.9:1) */
+  --brass-400: #D7B46A;     /* brass fills: dial hub, cash icon, selected outline */
+  --brass-500: #B8914A;     /* meter's dark end, dial rays */
+  --brass-600: #8C6C34;     /* brass rules: panel inlay, dial rim, plaque frame */
+  --brass-800: #3E3220;     /* faint brass hairline on sheet and panel top edges */
+  --brass-wash: rgba(215, 180, 106, 0.14);       /* brass-tinted fill: toast action, own chat bubbles */
+  --brass-wash-faint: rgba(215, 180, 106, 0.07); /* lines that involve you in the feed */
+  /* The primary button's metal: near-solid with a top highlight (one filled brass button per view). */
+  --brass-metal: #DDBB72;
+  --brass-metal-hover: #E6C682;
+  --brass-metal-pressed: #CFAB5F;
+  --on-brass: #121A2C;      /* text on brass, 9.4:1 */
 
-  /* Spacing */
-  --spacing-xs: 0.25rem;
-  --spacing-sm: 0.5rem;
-  --spacing-md: 1rem;
-  --spacing-lg: 1.5rem;
-  --spacing-xl: 2rem;
+  /* ---- paper: title deeds, cards, dice --------------------------------------------------------------- */
+  --paper: #F5ECDA;
+  --paper-2: #ECE0C7;       /* the deed's owner strip */
+  --paper-line: #D3C3A2;    /* the deed's frame and rules */
+  --paper-now: #E9D9B4;     /* the current rent tier's wash */
+  --paper-leader: #BBA984;  /* dotted leaders in the rent ladder */
+  --ink: #1B1A17;           /* text on paper (14.8:1) and on brass */
+  --ink-2: #5B5346;         /* secondary text on paper (6.5:1) */
+  --brass-ink: #6E521F;     /* brass accent on paper */
+  --stamp: #C4342B;         /* the "Mortgaged" stamp on paper */
+  --house-paper: #1E8A4F;   /* houses drawn on paper */
+  --hotel-paper: #C42F2A;
+  --house-night: #3DD68C;   /* houses drawn on lacquer */
+  --hotel-night: #FF6B5E;
+  --pip: #14203A;           /* dice pips */
 
-  /* Border radius */
-  --radius-sm: 4px;
-  --radius-md: 8px;
-  --radius-lg: 12px;
-  --radius-xl: 16px;
+  /* ---- signals (attention is brass: there is no warning colour) ------------------------------------- */
+  --go: #52C98C;            /* ready, online, back online */
+  --stop: #FF7A6B;          /* bankruptcy, mortgaged, unread badges, errors */
+  --stop-ink: #2A0E0A;      /* text on --stop (7.1:1) */
+  --stop-line: rgba(255, 122, 107, 0.6);
+  --offline: #3A4763;       /* the online dot when away */
+  --disabled-bg: #141F33;
+  --disabled-fg: #7D879C;   /* 4.6:1 on --disabled-bg */
 
-  /* Typography: Inter and Playfair Display are loaded in index.html */
-  --font-body: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
-  --font-display: 'Playfair Display', Georgia, 'Times New Roman', serif;
+  /* ---- players (mirror lib/colors.js PLAYER_COLORS; all 4.5:1+ as text on lacquer) ------------------- */
+  --p-red: #FF6B5E;
+  --p-blue: #5EA8FF;
+  --p-green: #3DD68C;
+  --p-yellow: #FFD447;
+  --p-purple: #B78CFF;
+  --p-orange: #FF9640;
+  --p-gray: #9AA3B5;
 
-  /* Layout */
+  /* ---- colour groups (mirror lib/board.js PROPERTY_COLORS: they match the board's bands) ------------- */
+  --g-brown: #9C5B2E;
+  --g-lightblue: #87CEEB;
+  --g-pink: #E0399A;
+  --g-orange: #F7941D;
+  --g-red: #E0312B;
+  --g-yellow: #F5D90A;
+  --g-green: #1FA45A;
+  --g-darkblue: #3A5BD9;
+  --g-railroad: #2B2B2B;
+  --g-utility: #B8C4CC;
+  --g-special: #1B2E5E;     /* deed band for Opportunity, Rikers and the other special spaces */
+  --swatch-ring: rgba(255, 255, 255, 0.32); /* inner ring on every group swatch: 3:1+ even on stations */
+
+  /* ---- type ----------------------------------------------------------------------------------------- */
+  --font-display: 'Antonio', 'Arial Narrow', 'Roboto Condensed', sans-serif;  /* names and headlines */
+  --font-text: 'Jost', 'Futura', 'Century Gothic', system-ui, sans-serif;    /* text and every amount */
+  --fs-display-xl: 60px;    /* the login wordmark */
+  --fs-display-l: 36px;     /* deed names, lobby title, sheet titles, the winner */
+  --fs-display-m: 22px;     /* turn-panel headlines: one line at 375px */
+  --fs-display-s: 21px;     /* the top bar's "Your turn", pane titles */
+  --fs-plaque: 30px;        /* lobby plaque numerals (static values only) */
+  --fs-body: 15px;
+  --fs-label: 15px;
+  --fs-meta: 13px;
+  --fs-micro: 11px;         /* tab bar labels only */
+  --fs-input: 17px;         /* 16px+ or iOS zooms on focus */
+  --fs-money: 16px;
+  --fs-money-l: 18px;       /* the top bar's cash */
+  --fs-money-xl: 22px;
+  --ls-display: 0.015em;
+  --lh-tight: 1.05;
+  --lh-snug: 1.2;
+  --lh-body: 1.4;
+
+  /* ---- space (4px base), radius, elevation ---------------------------------------------------------- */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-12: 48px;
+  --gutter: 16px;           /* phone side gutter */
+  --gutter-wide: 20px;      /* lobby and login */
+  --hit: 44px;              /* minimum touch target */
+
+  --r-control: 12px;        /* inputs, buttons, trade tiles */
+  --r-tag: 5px;
+  --r-toast: 16px;
+  --r-dialog: 20px;
+  --r-panel: 22px;          /* docked panels, top corners */
+  --r-sheet: 26px;          /* sheets, top corners */
+  --r-deed: 12px;
+  --r-deed-in: 7px;
+  --r-plaque: 4px;
+  --r-round: 999px;
+
+  /* Four levels and nothing else: room (none), lacquer (hairline), lifted, paper. */
+  --shadow-docked: 0 -1px 0 var(--brass-800), 0 -18px 30px rgba(0, 0, 0, 0.35);
+  --shadow-lifted: inset 0 0 0 1px var(--seam), inset 0 1px 0 var(--brass-800), 0 18px 40px rgba(0, 0, 0, 0.55);
+  --shadow-lifted-lg: inset 0 0 0 1px var(--seam), inset 0 1px 0 var(--brass-600), 0 24px 60px rgba(0, 0, 0, 0.6);
+  --shadow-sheet: 0 -1px 0 var(--brass-800), 0 -24px 60px rgba(0, 0, 0, 0.55);
+  --shadow-paper: 0 28px 50px -14px rgba(0, 0, 0, 0.7), 0 2px 0 rgba(0, 0, 0, 0.3);
+  --shadow-paper-sm: 0 10px 22px -6px rgba(0, 0, 0, 0.6);
+  --focus-ring: 2px solid var(--brass-200);
+
+  /* ---- motion ---------------------------------------------------------------------------------------- */
+  --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --ease-needle: cubic-bezier(0.2, 0.9, 0.3, 1.25); /* the dial's small mechanical overshoot */
+  --dur-quick: 160ms;
+  --dur-base: 220ms;
+  --dur-sheet: 280ms;
+  --dur-money: 400ms;
+  --dur-needle: 700ms;
+
+  /* ---- layout ---------------------------------------------------------------------------------------- */
+  /* Bar heights in the design: top bar 56 (64 desktop), tab bar 49 plus the safe area. The values below are
+     the current screens'; change them when the top bar and tab bar are restyled. */
   --topbar-h: 52px;
   --tabbar-h: 58px;
   --safe-top: env(safe-area-inset-top, 0px);
@@ -70,8 +168,9 @@
   --safe-right: env(safe-area-inset-right, 0px);
 
   color-scheme: dark;
-  font-family: var(--font-body);
-  line-height: 1.5;
+  font-family: var(--font-text);
+  font-size: var(--fs-body);
+  line-height: var(--lh-body);
   font-weight: 400;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
@@ -80,6 +179,66 @@
   -webkit-text-size-adjust: 100%;
   text-size-adjust: 100%;
 }
+
+@media (min-width: 1100px) {
+  :root {
+    --fs-display-l: 40px;
+    --fs-display-m: 28px;
+    --fs-display-s: 22px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --dur-needle: 0ms;
+    --dur-money: 0ms;
+    --dur-sheet: 120ms;
+    --dur-base: 120ms;
+  }
+}
+
+/* ---- TEMPORARY aliases ------------------------------------------------------------------------------- *
+ * The old green-and-gold names, pointed at the new palette so screens that still use them stay on theme.
+ * Remove each one when the last screen using it is restyled (README.md lists them).                       */
+:root {
+  --bg-primary: var(--room);
+  --bg-secondary: var(--lacquer);
+  --bg-card: var(--raised);
+  --card-bg: var(--raised);
+  --bg-hover: var(--raised-hover);
+  --bg-deep: var(--well);
+  --text-primary: var(--marble);
+  --text-secondary: var(--limestone);
+  --text-muted: var(--slate);
+  --border-color: var(--seam-strong);
+  --line: var(--seam);
+  --gold: var(--brass-400);
+  --gold-bright: var(--brass-300);
+  --monopoly-gold: var(--brass-400);
+  --monopoly-dark-gold: var(--brass-500);
+  --monopoly-cream: var(--paper);
+  --danger: #D63B40; /* legacy filled red that still carries white text (4.5:1); new UI uses --stop + --stop-ink */
+  --danger-text: var(--stop);
+  --success: var(--go);
+  --warn: var(--brass-300);
+  --info: var(--brass-300);
+  --font-body: var(--font-text);
+  --spacing-xs: var(--space-1);
+  --spacing-sm: var(--space-2);
+  --spacing-md: var(--space-4);
+  --spacing-lg: var(--space-6);
+  --spacing-xl: var(--space-8);
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.25);
+  --shadow-md: 0 4px 10px rgba(0, 0, 0, 0.35);
+  --shadow-lg: 0 8px 20px rgba(0, 0, 0, 0.45);
+  --shadow-xl: 0 18px 48px rgba(0, 0, 0, 0.55);
+}
+
+/* ---- keyframes (shared) ------------------------------------------------------------------------------ */
 
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(10px); }
@@ -111,10 +270,10 @@
   }
 
   html {
-    background: var(--bg-primary);
+    background: var(--room);
   }
 
-  /* Keep the hidden attribute working on elements that get a display value below. */
+  /* Keep the hidden attribute working on elements that get a display value elsewhere. */
   [hidden] {
     display: none !important;
   }
@@ -123,8 +282,8 @@
     min-width: 320px;
     min-height: 100vh;
     min-height: 100dvh;
-    background: linear-gradient(135deg, var(--bg-primary) 0%, var(--bg-secondary) 100%);
-    color: var(--text-primary);
+    background: var(--room);
+    color: var(--marble);
     overflow-x: hidden;
   }
 
@@ -134,34 +293,38 @@
     min-height: 100dvh;
   }
 
-  /* Typography */
+  /* ---- type: headings are Antonio, sentence case, no shadows; everything else is Jost --------------- */
 
-  h1 {
-    font-size: 2.5rem;
-    font-weight: 700;
-    letter-spacing: -0.02em;
-    margin-bottom: var(--spacing-md);
-    color: var(--monopoly-gold);
-    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
-  }
-
-  h2 {
-    font-size: 1.75rem;
-    font-weight: 600;
-    margin-bottom: var(--spacing-sm);
-    color: var(--text-primary);
-  }
-
+  h1,
+  h2,
   h3 {
-    font-size: 1.25rem;
+    font-family: var(--font-display);
     font-weight: 600;
-    margin-bottom: var(--spacing-sm);
-    color: var(--text-secondary);
+    letter-spacing: var(--ls-display);
+    line-height: var(--lh-tight);
+    color: var(--marble);
+  }
+
+  h1 { font-size: var(--fs-display-l); }
+  h2 { font-size: var(--fs-display-m); }
+  h3 { font-size: var(--fs-display-s); }
+
+  h4,
+  h5,
+  h6 {
+    font-size: var(--fs-label);
+    font-weight: 600;
+    line-height: var(--lh-snug);
+    color: var(--marble);
   }
 
   p {
-    margin-bottom: var(--spacing-md);
-    color: var(--text-secondary);
+    color: inherit;
+  }
+
+  strong,
+  b {
+    font-weight: 600;
   }
 
   img,
@@ -171,174 +334,129 @@
     max-width: 100%;
   }
 
-  /* Links */
-
   a {
-    color: var(--monopoly-gold);
+    color: var(--brass-300);
     text-decoration: none;
-    transition: color 0.2s ease;
+    text-underline-offset: 3px;
   }
 
-  /* Focus: a visible ring for keyboard users only */
+  ::selection {
+    background: rgba(215, 180, 106, 0.32);
+    color: var(--marble);
+  }
+
+  /* ---- focus: a visible brass ring for keyboard users only ------------------------------------------ */
 
   :focus-visible {
-    outline: 3px solid var(--gold-bright);
-    outline-offset: 2px;
+    outline: var(--focus-ring);
+    outline-offset: 3px;
   }
 
   :focus:not(:focus-visible) {
     outline: none;
   }
 
-  /* Buttons */
+  /* ---- buttons: a neutral reset. Looks come from classes (`ui-btn` in components/ui/ui.css). ---------- */
 
   button {
-    border-radius: var(--radius-md);
-    border: 2px solid transparent;
-    padding: 0.75rem 1.5rem;
-    font-size: 1rem;
-    font-weight: 600;
-    font-family: inherit;
-    line-height: 1.2;
-    background: linear-gradient(135deg, var(--monopoly-red) 0%, var(--monopoly-dark-red) 100%);
-    color: white;
-    cursor: pointer;
-    transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease, background 0.2s ease;
-    box-shadow: var(--shadow-sm);
-    letter-spacing: 0.01em;
     position: relative;
-    overflow: hidden;
+    font: inherit;
+    color: inherit;
+    line-height: 1.2;
+    background: none;
+    border: 0;
+    border-radius: 0;
+    cursor: pointer;
     touch-action: manipulation;
     -webkit-tap-highlight-color: transparent;
   }
 
-  button:active:not(:disabled) {
-    transform: translateY(1px);
-    box-shadow: var(--shadow-sm);
-  }
-
   button:disabled {
-    background: linear-gradient(135deg, #5a6b63 0%, #3c4a43 100%);
     cursor: not-allowed;
-    opacity: 0.6;
-    transform: none;
   }
 
-  button.secondary {
-    background: linear-gradient(135deg, var(--monopoly-green) 0%, var(--monopoly-dark-green) 100%);
-  }
+  /* ---- text fields: a 52px well with a 3:1 outline; brass inner line and ring on focus ---------------- */
 
-  button.outline {
-    background: transparent;
-    border: 2px solid var(--monopoly-gold);
-    color: var(--monopoly-gold);
-  }
-
-  /* Hover effects only where hovering exists: on touch screens they stick after a tap. */
-  @media (hover: hover) and (pointer: fine) {
-    a:hover {
-      color: var(--gold-bright);
-      text-decoration: underline;
-    }
-
-    button::before {
-      content: '';
-      position: absolute;
-      inset: 0 auto 0 -100%;
-      width: 100%;
-      background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
-      transition: left 0.5s ease;
-      pointer-events: none;
-    }
-
-    button:hover:not(:disabled)::before {
-      left: 100%;
-    }
-
-    button:hover:not(:disabled) {
-      transform: translateY(-2px);
-      box-shadow: var(--shadow-md);
-      border-color: var(--monopoly-gold);
-    }
-
-    button.outline:hover:not(:disabled) {
-      background: var(--monopoly-gold);
-      color: var(--bg-primary);
-    }
-
-    .card:hover {
-      box-shadow: var(--shadow-lg);
-    }
-
-    ::-webkit-scrollbar-thumb:hover {
-      background: var(--monopoly-dark-gold);
-    }
-  }
-
-  /* Inputs: 16px minimum, or iOS zooms in on focus */
-
-  input,
-  textarea,
-  select {
+  :where(input:not([type='checkbox'], [type='radio'], [type='range'], [type='color'], [type='file'], [type='submit'], [type='button'])),
+  :where(textarea, select) {
     width: 100%;
-    padding: 0.75rem 1rem;
-    font-size: max(16px, 1rem);
-    font-family: inherit;
-    background: rgba(255, 255, 255, 0.1);
-    border: 2px solid var(--border-color);
-    border-radius: var(--radius-md);
-    color: var(--text-primary);
-    transition: border-color 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
+    min-height: 52px;
+    padding: 0 14px;
+    font: inherit;
+    font-size: var(--fs-input);
+    color: var(--marble);
+    background: var(--well);
+    border: 0;
+    border-radius: var(--r-control);
+    box-shadow: inset 0 0 0 1px var(--seam-strong);
+    transition: box-shadow var(--dur-quick) ease;
   }
 
-  input:focus,
-  textarea:focus,
-  select:focus {
-    outline: none;
-    border-color: var(--monopoly-gold);
-    background: rgba(255, 255, 255, 0.15);
-    box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.3);
+  :where(textarea) {
+    padding: 12px 14px;
+    line-height: var(--lh-body);
+    resize: vertical;
   }
 
-  input::placeholder,
-  textarea::placeholder {
-    color: var(--text-muted);
+  /* Text fields show focus on any focus (a tap included): it is where the typing goes. */
+  :where(input:not([type='checkbox'], [type='radio'], [type='range'], [type='color'], [type='file'], [type='submit'], [type='button'])):focus,
+  :where(textarea, select):focus {
+    box-shadow: inset 0 0 0 1.5px var(--brass-300);
+    outline: var(--focus-ring);
+    outline-offset: 2px;
   }
 
-  /* Cards */
+  ::placeholder {
+    color: var(--slate);
+    opacity: 1;
+  }
+
+  :where(input[type='checkbox'], input[type='radio']) {
+    accent-color: var(--brass-400);
+  }
+
+  /* ---- legacy card (older screens) ------------------------------------------------------------------ */
 
   .card {
-    background: var(--bg-card);
-    border-radius: var(--radius-lg);
-    padding: var(--spacing-lg);
-    box-shadow: var(--shadow-md);
-    border: 1px solid var(--border-color);
-    transition: box-shadow 0.3s ease;
+    background: var(--raised);
+    border-radius: var(--r-toast);
+    padding: var(--space-6);
+    box-shadow: var(--shadow-lifted);
   }
 
-  /* Scrollbars */
+  /* ---- scrollbars: thin, quiet ---------------------------------------------------------------------- */
+
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--seam-strong) transparent;
+  }
 
   ::-webkit-scrollbar {
-    width: 10px;
-    height: 10px;
+    width: 8px;
+    height: 8px;
   }
 
   ::-webkit-scrollbar-track {
-    background: var(--bg-secondary);
-    border-radius: var(--radius-sm);
+    background: transparent;
   }
 
   ::-webkit-scrollbar-thumb {
-    background: var(--monopoly-gold);
-    border-radius: var(--radius-sm);
-    border: 2px solid var(--bg-secondary);
+    background: var(--seam-strong);
+    border-radius: 4px;
+    border: 2px solid transparent;
+    background-clip: padding-box;
   }
 
-  /* Utilities */
+  /* ---- utilities ----------------------------------------------------------------------------------- */
 
+  /* Every amount: Jost with tabular, lining figures, so digits never jitter as values change. Kerning is
+     off as well: Jost kerns "11" and "1," even in tabular mode, which makes $1,111 narrower than $8,888. */
   .money,
+  .num,
   .tabular {
-    font-variant-numeric: tabular-nums;
+    font-family: var(--font-text);
+    font-variant-numeric: tabular-nums lining-nums;
+    font-kerning: none;
   }
 
   .sr-only {
@@ -355,38 +473,26 @@
 
   .text-center { text-align: center; }
 
-  .mt-sm { margin-top: var(--spacing-sm); }
-  .mt-md { margin-top: var(--spacing-md); }
-  .mt-lg { margin-top: var(--spacing-lg); }
+  .mt-sm { margin-top: var(--space-2); }
+  .mt-md { margin-top: var(--space-4); }
+  .mt-lg { margin-top: var(--space-6); }
 
-  .mb-sm { margin-bottom: var(--spacing-sm); }
-  .mb-md { margin-bottom: var(--spacing-md); }
-  .mb-lg { margin-bottom: var(--spacing-lg); }
+  .mb-sm { margin-bottom: var(--space-2); }
+  .mb-md { margin-bottom: var(--space-4); }
+  .mb-lg { margin-bottom: var(--space-6); }
 
   .flex { display: flex; }
   .flex-col { flex-direction: column; }
   .items-center { align-items: center; }
   .justify-center { justify-content: center; }
 
-  .gap-sm { gap: var(--spacing-sm); }
-  .gap-md { gap: var(--spacing-md); }
-  .gap-lg { gap: var(--spacing-lg); }
+  .gap-sm { gap: var(--space-2); }
+  .gap-md { gap: var(--space-4); }
+  .gap-lg { gap: var(--space-6); }
 
   .fade-in { animation: fadeIn 0.4s ease both; }
   .slide-in { animation: slideIn 0.4s ease both; }
   .pulse { animation: pulse 2s ease-in-out infinite; }
-
-  /* Responsive type */
-
-  @media (max-width: 768px) {
-    h1 { font-size: 2rem; }
-    h2 { font-size: 1.5rem; }
-
-    button {
-      padding: 0.625rem 1.25rem;
-      font-size: 0.95rem;
-    }
-  }
 }
 
 /* Motion: honour the system setting. Delays are kept (some UI waits on them); movement is not. */

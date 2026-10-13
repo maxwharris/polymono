@@ -45,15 +45,18 @@ export const SPACES = [
 
 export const JAIL_POSITION = 10;
 
+// The board's band colours, shared by the UI swatches and the 3D bands so the two agree. Brown and dark blue
+// are lifted from the art's #8B4513 and #2B4BCB so they pass 3:1 on the navy UI; stations stay near-black
+// and rely on the swatch's light inner ring (index.css --swatch-ring). index.css mirrors these as --g-*.
 export const PROPERTY_COLORS = {
-  brown: '#8B4513',
+  brown: '#9C5B2E',
   lightblue: '#87CEEB',
   pink: '#E0399A',
   orange: '#F7941D',
   red: '#E0312B',
   yellow: '#F5D90A',
   green: '#1FA45A',
-  darkblue: '#2B4BCB',
+  darkblue: '#3A5BD9',
   railroad: '#2B2B2B',
   utility: '#B8C4CC'
 };

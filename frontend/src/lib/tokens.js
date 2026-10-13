@@ -1,15 +1,49 @@
-// Player tokens: the six 3D models in public/tokens. Older accounts may still carry the original
-// Monopoly names, which map onto the same models.
+import { createElement } from 'react';
+
+// Player tokens: the six 3D models in src/assets/tokens. Older accounts may still carry the original Monopoly
+// names, which map onto the same models.
+//
+// `glyph` is the token's flat silhouette for the chrome (medallions, chips, the feed): one path on a 32-unit
+// grid, filled with fill-rule="evenodd" so the cut-outs (windows, eyes) are real holes and the glyph works on
+// any background in a single colour. Traced from orthographic renders of the GLB models (taxi, pigeon, rat,
+// Empire State) or drawn over them (subway, bull). Render it with <TokenGlyph> or <Medallion> from
+// components/ui/Medallion.jsx.
 export const TOKENS = {
-  taxi: { label: 'Taxi', emoji: '🚕' },
-  pigeon: { label: 'Pigeon', emoji: '🐦' },
-  rat: { label: 'Rat', emoji: '🐀' },
-  subway: { label: 'Subway', emoji: '🚇' },
-  bull: { label: 'Bull', emoji: '🐂' },
-  empire: { label: 'Empire State', emoji: '🏙️' }
+  // side view of the board's Checker cab, roof sign, windows and hubcaps cut out
+  taxi: {
+    label: 'Taxi',
+    glyph: 'M13.7 9.1C13.3 9.1 13.3 9.1 13.3 10.4C13.2 11.8 13.1 12 12.3 12.2C11.7 12.4 11.4 12.6 11.3 13.1C11.3 13.3 11.1 13.7 11 14C10.2 15.2 9.9 15.4 8.3 15.4C6.7 15.4 5.2 15.6 4 15.8C2.1 16.2 2 16.3 2.1 17.9C2.2 18.8 2.1 18.9 1.9 19.4C1.8 19.7 1.7 20.2 1.6 20.5C1.5 21.5 2.1 21.7 3.4 21.2C4 21 4.2 21.1 4.4 21.6C4.4 22 4.9 22.5 5.4 22.8C6.3 23.4 7.5 23 8.3 22C8.6 21.6 8.8 21.5 9.2 21.6C9.4 21.6 12 21.6 15.1 21.6C21.4 21.5 21.2 21.5 21.6 22C22.6 23.4 24.1 23.5 25.3 22.2C25.7 21.8 25.7 21.7 26.3 21.7C26.6 21.6 27 21.5 27.3 21.5C27.7 21.4 27.9 21.4 28.2 21.5C30 21.9 30.9 21.5 30.1 20.6C29.6 20.2 29.5 19.7 29.5 18.6C29.5 17.7 29.4 17.3 29 17C28.7 16.7 28.6 16.6 27.2 16.5C25.9 16.3 25.9 16.3 25.2 14.9C24.4 13.2 24.1 12.8 22.6 12.3C21.6 11.9 21.5 11.7 21.5 10.4C21.5 9.4 21.5 9.2 21.4 9.2C21.2 9.1 14.2 9 13.7 9.1M11.6 16.1C11.8 14.6 12.4 13.4 13.6 13.3H16.2V16.1ZM17.2 13.3H20C20.8 13.3 21.4 14.6 21.6 16.1H17.2ZM5.2 21.4a0.9 0.9 0 1 0 1.8 0a0.9 0.9 0 1 0 -1.8 0ZM22.6 21.4a0.9 0.9 0 1 0 1.8 0a0.9 0.9 0 1 0 -1.8 0Z'
+  },
+  // side view of the board's pigeon, eye cut out (the base disc dropped)
+  pigeon: {
+    label: 'Pigeon',
+    glyph: 'M6.1 4.8C5.6 5 5.1 5.3 4.8 5.7C4.4 6.2 3.7 6.9 3 7.6C1.8 8.6 1.8 9.7 3 9.4C3.2 9.3 3.8 9.2 4.3 9.2C5.3 9.2 5.8 9.4 6.2 10.1C6.4 10.6 6.4 13.1 6.2 14.4C5.5 18.1 6.2 19.8 8.9 21.6C10 22.4 11.1 22.9 12.9 23.6C14.4 24.1 14.6 24.2 14.5 24.7C14.3 25.5 14 25.8 12.8 26.4C11.9 26.8 11.9 26.9 11.9 27.1C11.9 27.3 12 27.3 12.5 27.4C13.3 27.5 14.4 27.4 14.5 27.2C14.8 26.9 15.2 26.3 15.5 25.7C16.1 24.7 16.8 24 17.5 23.7C18.8 23 19.3 22.7 20.4 21.6C22.1 20 22.2 19.9 23.1 20.2C24.1 20.4 26.4 20.4 26.7 20.2C27.2 19.9 26.9 19.3 26.2 19C25.7 18.8 25.8 18.5 26.4 18.1C27.2 17.6 27.3 17.5 27.4 17.1C27.4 16.7 27.4 16.6 27.9 16.4C28.7 15.9 28.8 15.6 28.2 15.2C27.9 15 27.9 14.7 28.3 14.5C29.2 14.1 29.2 13.4 28.3 13.4C28.2 13.4 28 13.3 27.9 13.1L27.7 12.9 27.9 12.7C28 12.6 28.3 12.4 28.5 12.3C29.1 12 29.2 11.5 28.6 11.3C28.2 11.1 28 10.8 28.2 10.6C28.2 10.5 28.6 10.3 29 10.1C30.4 9.5 30 9.1 28.2 9.1C25.6 9.1 24.9 9.6 23.2 12.7C22.5 14.1 22.4 14.3 22 14.5C21.5 14.8 19.7 14.6 18.4 14.1C17.7 13.7 15.9 13 14.7 12.5C13 11.9 12.6 11.4 10.5 7C10 5.9 9.7 5.6 8.7 5.1C7.9 4.7 6.7 4.6 6.1 4.8M7.1 8.3a0.8 0.8 0 1 0 1.6 0a0.8 0.8 0 1 0 -1.6 0Z'
+  },
+  // side view of the board's rat sitting up, tail curled (its pizza slice dropped: at 22px it read as a stick)
+  rat: {
+    label: 'Rat',
+    glyph: 'M9.9 3.4C9.6 3.7 9.3 4.2 9.2 4.7C9 5.2 8.7 5.5 8.4 5.6C7.4 5.7 5.6 6.6 4.9 7.2C4.7 7.4 4.2 8 3.8 8.4C3.4 8.9 2.8 9.6 2.4 9.9C1.4 10.9 1.4 11.1 2.6 12.1C3.3 12.8 3.6 12.9 4.3 12.8C5.2 12.6 5.6 12.8 6.3 13.8C6.8 14.5 6.9 14.6 7.2 14.7C8 14.9 7.9 14.6 8 18.7L8 22.3 7.7 22.8L7.3 23.2 7.3 24.4C7.3 26.1 7.4 26.3 8.4 27.5C8.7 27.8 8.6 28.1 8.2 28.3C7.9 28.4 7.7 28.8 7.9 28.9C8 29.1 13.5 29 14.7 28.9C17.5 28.6 17.6 28.6 19.5 28.8C21.9 29 25.7 29 26.6 28.8C29.2 28.1 30.4 26.6 30.4 23.9C30.4 23.1 30.4 22.6 30.3 22C30.1 21.2 30 20.6 30.1 20.1C30.2 19.4 29.8 19.2 29.2 19.9C28.9 20.3 28.9 20.6 29 21.8C29.3 25.3 28.7 26.7 26.5 27.4C25.5 27.7 22.9 27.7 20.8 27.4C19.2 27.1 19.2 27.1 19.2 26.1C19.2 22.6 17.8 18 15.3 13.7C15.1 13.4 14.8 12.7 14.6 12.3C13.5 10.2 12.2 7.7 12 7.5C11.6 7 11.5 6.6 11.5 6.2C11.5 4.2 10.6 2.7 9.9 3.4M10.15 8.7a0.75 0.75 0 1 0 1.5 0a0.75 0.75 0 1 0 -1.5 0Z'
+  },
+  // side view of the board's vintage car: clerestory roof, end doors, saloon windows, bogies on a rail
+  subway: {
+    label: 'Subway car',
+    glyph: 'M3 19.4V10.9Q3 9.4 4.5 9.4H6V8.2Q6 7.4 6.8 7.4H25.2Q26 7.4 26 8.2V9.4H27.5Q29 9.4 29 10.9V19.4Q29 20.4 28 20.4H4Q3 20.4 3 19.4ZM4.6 11.8H6.6V16.4H4.6ZM25.4 11.8H27.4V16.4H25.4ZM8.3 11.8H11.5V15.4H8.3ZM12.4 11.8H15.6V15.4H12.4ZM16.4 11.8H19.6V15.4H16.4ZM20.5 11.8H23.7V15.4H20.5ZM6.95 22.1a1.25 1.25 0 1 0 2.5 0a1.25 1.25 0 1 0 -2.5 0ZM10.15 22.1a1.25 1.25 0 1 0 2.5 0a1.25 1.25 0 1 0 -2.5 0ZM19.35 22.1a1.25 1.25 0 1 0 2.5 0a1.25 1.25 0 1 0 -2.5 0ZM22.55 22.1a1.25 1.25 0 1 0 2.5 0a1.25 1.25 0 1 0 -2.5 0ZM1.6 24.1H30.4V25.3H1.6Z'
+  },
+  // the board's bull, head on: wide horns and ears (its side view reads as a pig at small sizes)
+  bull: {
+    label: 'Bull',
+    glyph: 'M16 9C14.6 8.9 13.5 9 12.6 9.5C10.4 9.5 6.8 8.2 5.3 3.4C3.4 6.6 4 11.2 10.5 11.7C8.3 11.5 5.6 11.9 4.4 13.1C5.6 14.7 8.6 14.9 11 14.7C11.5 17.2 12.1 19.2 11.9 21.2C11.6 23.1 11.4 25.4 12.6 26.5C13.6 27.3 14.8 27.4 16 27.4C17.2 27.4 18.4 27.3 19.4 26.5C20.6 25.4 20.4 23.1 20.1 21.2C19.9 19.2 20.5 17.2 21 14.7C23.4 14.9 26.4 14.7 27.6 13.1C26.4 11.9 23.7 11.5 21.5 11.7C28 11.2 28.6 6.6 26.7 3.4C25.2 8.2 21.6 9.5 19.4 9.5C18.5 9 17.4 8.9 16 9ZM12.4 15.3C13.2 15.1 14.3 15.6 14.8 16.4C14 16.8 12.9 16.4 12.4 15.3ZM19.6 15.3C18.8 15.1 17.7 15.6 17.2 16.4C18 16.8 19.1 16.4 19.6 15.3ZM13.6 24a.75 1 0 1 0 1.5 0a.75 1 0 1 0 -1.5 0ZM16.9 24a.75 1 0 1 0 1.5 0a.75 1 0 1 0 -1.5 0Z'
+  },
+  // the board's Empire State from the front, with its two neighbouring blocks
+  empire: {
+    label: 'Empire State',
+    glyph: 'M15.8 4.2C15.7 5.1 15.7 5.3 15.4 5.8C15.2 6.4 15.2 6.4 15.2 7.3C15.2 8.4 15.1 8.8 14.6 9.3C14.5 9.5 14.4 9.7 14.4 9.9C14.4 10 14.2 10.4 14.1 10.6L13.8 11.1 13.8 13.5C13.8 17 13.9 22.5 14 22.9C14.2 23.3 14.2 24.1 14.1 24.3C14 24.3 13.9 24.4 13.7 24.4C13.5 24.5 13.3 24.6 13.1 24.8C12.9 24.9 12.7 25.1 12.6 25.1C12.2 25.3 11.9 25.8 11.9 26.2C11.9 26.6 11.8 26.9 11.5 26.8C10.9 26.7 10.6 26.9 10.6 27.4C10.6 27.6 10.5 27.9 10.4 28.1C10.3 28.4 10.2 28.6 10.2 29.1C10.2 29.8 10.4 30 10.9 30C11.3 30.1 21.2 30 21.4 30C21.7 29.8 21.7 28.7 21.5 28.2C21.4 28 21.3 27.7 21.3 27.4C21.2 26.9 21.1 26.8 20.7 26.8C20.4 26.8 20.3 26.6 20.2 26.3C20.2 26.2 20.1 26 20.1 25.9C20.1 25.6 19.7 25.3 19.3 25.2C19 25.2 18.9 25.1 18.7 24.9C18.6 24.7 18.4 24.5 18.2 24.5C17.8 24.3 17.8 24.3 17.8 23.7C17.8 23.3 17.8 23.1 17.9 22.9C18 22.7 18 22.5 18 21.5C18.1 20.8 18.1 18.9 18.1 17.2C18.2 15.6 18.2 13.5 18.1 12.6L18.1 11.1 17.8 10.7C17.7 10.4 17.5 10.1 17.5 9.9C17.5 9.7 17.3 9.5 17.2 9.3C16.9 8.9 16.8 8.6 16.7 7.3C16.7 6.6 16.6 6.1 16.6 6C16.4 5.7 16.2 4.8 16.1 4.3C16 3.1 15.9 3.1 15.8 4.2M7.8 23.3C7.5 23.4 7.4 23.6 7.4 24C7.3 24.2 7.3 24.5 7.2 24.6C7.1 24.8 7 25 7 25.6C7 26 6.9 26.4 6.8 26.6C6.7 26.9 6.7 27.3 6.7 28.2C6.6 28.9 6.6 29.6 6.5 29.7C6.4 30 6.5 30 8 30.1C9.3 30.1 9.7 30.1 9.8 29.9C10 29.7 9.9 25.8 9.8 25.5C9.7 25.3 9.7 25.2 9.7 25.1C9.7 25 9.6 24.8 9.5 24.6C9.4 24.4 9.3 24.2 9.3 24C9.3 23.3 8.5 22.9 7.8 23.3M23.1 23.3C22.8 23.5 22.6 23.6 22.6 24.1C22.6 24.2 22.5 24.4 22.5 24.4C22.2 24.6 22.2 24.9 22.1 27.2C22.1 28.4 22.1 29.5 22 29.5C22 29.6 22 29.7 22.1 29.9L22.3 30 23.7 30C24.5 30 25.3 30 25.4 30L25.6 29.9 25.4 29.6C25.3 29.4 25.2 29.2 25.2 28C25.2 27 25.1 26.6 25.1 26.5C25 26.3 24.9 26 24.9 25.5C24.9 25 24.8 24.8 24.7 24.6C24.6 24.5 24.5 24.2 24.5 24C24.4 23.3 23.8 22.9 23.1 23.3'
+  }
 };
 
 export const TOKEN_TYPES = Object.keys(TOKENS);
+
+export const TOKEN_GLYPH_VIEWBOX = '0 0 32 32';
 
 const LEGACY = { car: 'taxi', hat: 'pigeon', dog: 'rat', ship: 'subway', thimble: 'bull', shoe: 'empire' };
 
@@ -17,10 +51,24 @@ export function tokenKey(tokenType) {
   return TOKENS[tokenType] ? tokenType : LEGACY[tokenType] || 'taxi';
 }
 
-export function tokenEmoji(tokenType) {
-  return TOKENS[tokenKey(tokenType)].emoji;
-}
-
 export function tokenLabel(tokenType) {
   return TOKENS[tokenKey(tokenType)].label;
+}
+
+/** The glyph's path data (32-unit grid, evenodd). */
+export function tokenGlyph(tokenType) {
+  return TOKENS[tokenKey(tokenType)].glyph;
+}
+
+/**
+ * @deprecated TEMPORARY shim so screens not yet restyled keep building: it no longer returns an emoji but a
+ * 1em inline SVG glyph in the player's colour (var(--pc)) or the text colour. Replace each call with
+ * <Medallion> or <TokenGlyph> (components/ui/Medallion.jsx), then delete this function.
+ */
+export function tokenEmoji(tokenType) {
+  return createElement(
+    'svg',
+    { className: 'ui-glyph ui-glyph--inline', viewBox: TOKEN_GLYPH_VIEWBOX, width: '1em', height: '1em', 'aria-hidden': true, focusable: 'false' },
+    createElement('path', { d: tokenGlyph(tokenType), fillRule: 'evenodd' })
+  );
 }
