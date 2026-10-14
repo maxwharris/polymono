@@ -20,7 +20,9 @@ const corsOptions = {
   origin: [
     "https://mp.maxharris.io",
     "http://mp.maxharris.io",
-    "http://localhost:5173"
+    "http://localhost:5173",
+    // Extra origins for local stacks (scripts/dev-stack.js), e.g. CORS_ORIGINS=http://localhost:5200
+    ...(process.env.CORS_ORIGINS || '').split(',').map(s => s.trim()).filter(Boolean)
   ],
   methods: ["GET", "POST", "PATCH", "PUT", "DELETE", "OPTIONS"],
   credentials: true
