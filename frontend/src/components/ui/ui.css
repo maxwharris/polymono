@@ -102,13 +102,6 @@
     fill: currentColor;
   }
 
-  /* lib/tokens.js tokenEmoji() shim: a glyph that sits in a line of text where an emoji used to be. */
-  .ui-glyph--inline {
-    display: inline-block;
-    vertical-align: -0.14em;
-    fill: var(--pc, currentColor);
-  }
-
   /* ================================================================================================= */
   /* Buttons: primary (flat brass, one per view), secondary (lacquer), ghost (quiet), danger, tint         */
   /* ================================================================================================= */
@@ -218,10 +211,17 @@
     gap: 3px;
   }
 
+  /* Longhands, not the font shorthand: it would reset font-variant-numeric and font-kerning, and the sub line
+     often carries an amount (`ui-btn__sub ui-money`: "+$90"). */
   .ui-btn__sub {
-    font: 500 13px / 1 var(--font-text);
+    font-family: var(--font-text);
+    font-size: 13px;
+    font-weight: 500;
+    line-height: 1;
     color: var(--limestone);
   }
+
+  .ui-btn__sub.ui-money { font-weight: 600; }
 
   .ui-btn--primary .ui-btn__sub { color: rgba(18, 26, 44, 0.74); }
 
@@ -835,6 +835,12 @@
     box-shadow: inset 0 0 0 1.5px var(--brass-300);
     outline: var(--focus-ring);
     outline-offset: 2px;
+  }
+
+  /* Focus on a button inside the field (Show, Send) rings the button only, not the field too. */
+  .ui-input:focus-within:not(:has(> input:focus)) {
+    box-shadow: inset 0 0 0 1px var(--seam-strong);
+    outline: none;
   }
 
   .ui-input > input {

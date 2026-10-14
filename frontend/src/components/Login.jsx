@@ -1,6 +1,10 @@
 import { useState } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import useGameStore from '../store/gameStore';
+import Icon from './ui/Icon';
+import TurnDial from './ui/TurnDial';
+import Wordmark from './ui/Wordmark';
+import Skyline from './screens/Skyline';
 import ui from './screens/ui.module.css';
 import s from './screens/Login.module.css';
 
@@ -44,19 +48,17 @@ export default function Login() {
 
   return (
     <main className={`${ui.theme} ${s.page}`}>
-      <div className={`${ui.panel} ${s.card}`}>
+      <div className={s.column}>
         <header className={s.brand}>
-          <img className={ui.logo} src="/polymono-logo.webp" alt="" width="168" height="92" decoding="async" />
-          <h1 className={s.title}>Polymono</h1>
-          <p className={s.subtitle}>Manhattan Edition</p>
+          <TurnDial size={176} sweep decorative className={s.emblem} />
+          <Wordmark as="h1" size="xl" sub="Manhattan edition" className={s.wordmark} />
         </header>
 
         <form className={s.form} onSubmit={handleSubmit} noValidate>
-          <div className={ui.field}>
-            <label className={ui.label} htmlFor="login-username">Username</label>
+          <div className="ui-field">
+            <label className="ui-label" htmlFor="login-username">Username</label>
             <input
               id="login-username"
-              className={ui.input}
               type="text"
               name="username"
               value={username}
@@ -72,12 +74,11 @@ export default function Login() {
             />
           </div>
 
-          <div className={ui.field}>
-            <label className={ui.label} htmlFor="login-password">Password</label>
-            <div className={s.passwordRow}>
+          <div className="ui-field">
+            <label className="ui-label" htmlFor="login-password">Password</label>
+            <div className={`ui-input ${s.secret}`}>
               <input
                 id="login-password"
-                className={ui.input}
                 type={showPassword ? 'text' : 'password'}
                 name="password"
                 value={password}
@@ -93,10 +94,10 @@ export default function Login() {
               />
               <button
                 type="button"
-                className={`${ui.btn} ${ui.ghost} ${ui.small} ${s.reveal}`}
+                className="ui-input__act"
                 onClick={() => setShowPassword(v => !v)}
-                aria-pressed={showPassword}
                 aria-controls="login-password"
+                aria-label={showPassword ? 'Hide password' : 'Show password'}
               >
                 {showPassword ? 'Hide' : 'Show'}
               </button>
@@ -104,30 +105,40 @@ export default function Login() {
           </div>
 
           {error && (
-            <p id="login-error" className={`${ui.notice} ${ui.noticeError}`} role="alert">
-              {error}
+            <p id="login-error" className={`ui-error ${s.error}`} role="alert">
+              <Icon name="warning" size={18} />
+              <span>{error}</span>
             </p>
           )}
 
-          <button type="submit" className={`${ui.btn} ${ui.primary} ${ui.block}`} disabled={!!pending}>
+          <button
+            type="submit"
+            className={`ui-btn ui-btn--primary ui-btn--lg ui-btn--block ${s.submit}`}
+            disabled={!!pending}
+            aria-busy={pending === 'login' || undefined}
+          >
+            {pending === 'login' && <span className="ui-spinner" aria-hidden="true" />}
             {pending === 'login' ? 'Logging in…' : 'Log in'}
           </button>
         </form>
 
-        <div className={s.divider} role="presentation"><span>or</span></div>
+        <p className={s.or}><span>or</span></p>
 
         <button
           type="button"
-          className={`${ui.btn} ${ui.outline} ${ui.block}`}
+          className={`ui-btn ui-btn--secondary ui-btn--block ${s.spectate}`}
           onClick={handleSpectate}
           disabled={!!pending}
+          aria-busy={pending === 'spectate' || undefined}
         >
-          {pending === 'spectate' ? 'Opening…' : 'Watch as spectator'}
+          {pending === 'spectate' ? <span className="ui-spinner" aria-hidden="true" /> : <Icon name="eye" size={20} />}
+          {pending === 'spectate' ? 'Opening…' : 'Watch as a spectator'}
         </button>
-        <p className={`${ui.hint} ${s.footnote}`}>
+        <p className={`ui-hint ${s.footnote}`}>
           Spectators can see the board and read the chat. Accounts are set up by the game admin.
         </p>
       </div>
+      <Skyline />
     </main>
   );
 }

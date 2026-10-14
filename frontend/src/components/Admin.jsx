@@ -1,8 +1,11 @@
 import { useEffect, useId, useState } from 'react';
 import useGameStore from '../store/gameStore';
 import { api, getToken } from '../lib/api';
-import { TOKEN_TYPES, tokenEmoji, tokenLabel } from '../lib/tokens';
-import ConfirmStep from './screens/ConfirmStep';
+import { TOKEN_TYPES, tokenLabel } from '../lib/tokens';
+import Icon from './ui/Icon';
+import Medallion from './ui/Medallion';
+import Wordmark from './ui/Wordmark';
+import ConfirmDialog from './screens/ConfirmDialog';
 import { dayLabel } from './screens/time';
 import ui from './screens/ui.module.css';
 import s from './screens/Admin.module.css';
@@ -11,12 +14,15 @@ const USERNAME_RULE = /^[A-Za-z0-9_.-]{2,30}$/;
 const MIN_PASSWORD = 6;
 const MAX_TURN_HOURS = 168;
 
+const NOTICE_ICON = { error: 'warning', success: 'check' };
+
 function Notice({ notice }) {
   if (!notice) return null;
   const tone = notice.tone === 'error' ? ui.noticeError : notice.tone === 'success' ? ui.noticeSuccess : '';
   return (
     <p className={`${ui.notice} ${tone}`} role={notice.tone === 'error' ? 'alert' : 'status'}>
-      {notice.text}
+      <Icon name={NOTICE_ICON[notice.tone] || 'info'} size={18} />
+      <span>{notice.text}</span>
     </p>
   );
 }
@@ -24,15 +30,25 @@ function Notice({ notice }) {
 function Shell({ account, children }) {
   return (
     <main className={`${ui.theme} ${s.page}`}>
-      <header className={s.header}>
-        <img className={s.logo} src="/polymono-logo.webp" alt="" width="96" height="52" decoding="async" />
-        <div className={s.heading}>
-          <h1 className={s.title}>Admin</h1>
-          {account && !account.isSpectator && <p className={s.subtitle}>Signed in as {account.username}</p>}
-        </div>
-        <a className={`${ui.btn} ${ui.ghost} ${ui.small}`} href="/">Back to the game</a>
+      <header className={s.bar}>
+        <Wordmark size="sm" sub="Admin" inline />
+        <a className="ui-btn ui-btn--ghost" href="/">
+          <Icon name="arrow-left" size={18} />
+          Back to the game
+        </a>
       </header>
-      {children}
+      <div className={s.content}>
+        <div className={s.intro}>
+          <h1 className={`ui-display-l ${s.title}`}>Admin</h1>
+          {account && !account.isSpectator && (
+            <p className={s.subtitle}>
+              <Icon name="shield" size={16} />
+              Signed in as {account.username}
+            </p>
+          )}
+        </div>
+        {children}
+      </div>
     </main>
   );
 }
@@ -62,7 +78,10 @@ export default function Admin() {
   if (checking) {
     return (
       <Shell>
-        <p className={ui.notice} role="status">Checking your account…</p>
+        <p className={s.checking} role="status">
+          <span className="ui-spinner" aria-hidden="true" />
+          Checking your account…
+        </p>
       </Shell>
     );
   }
@@ -70,14 +89,14 @@ export default function Admin() {
   if (!account?.isAdmin) {
     return (
       <Shell account={account}>
-        <section className={`${ui.panel} ${s.section}`}>
+        <section className={s.section}>
           <h2 className={s.sectionTitle}>Log in as an admin</h2>
           <p className={s.copy}>
             {account && !account.isSpectator
               ? `${account.username} is not an admin account. Log out of the game and log in with an admin account to manage players.`
               : 'This page is for the game admin. Log in with an admin account, then come back to /admin.'}
           </p>
-          <a className={`${ui.btn} ${ui.primary}`} href="/">Go to the login page</a>
+          <a className={`ui-btn ui-btn--primary ${s.cta}`} href="/">Go to the login page</a>
         </section>
       </Shell>
     );
@@ -117,11 +136,12 @@ function AdminConsole({ me }) {
   }, [reload]);
 
   const refresh = () => setReload(n => n + 1);
+  const seated = new Map((gameState?.players || []).map(p => [p.user_id, p]));
 
   return (
     <div className={s.sections}>
-      <UsersSection users={users} error={usersError} me={me} onChanged={refresh} />
-      <CreateUserSection users={users} onCreated={refresh} />
+      <UsersSection users={users} error={usersError} me={me} seated={seated} onChanged={refresh} />
+      <CreateUserSection users={users} error={usersError} onCreated={refresh} />
       <GameSection gameState={gameState} error={gameError} onState={setGameState} onChanged={refresh} />
     </div>
   );
@@ -129,7 +149,7 @@ function AdminConsole({ me }) {
 
 // ---- accounts -----------------------------------------------------------------------------------------
 
-function UsersSection({ users, error, me, onChanged }) {
+function UsersSection({ users, error, me, seated, onChanged }) {
   const [notice, setNotice] = useState(null);
   const [passwordFor, setPasswordFor] = useState(null);
   const [newPassword, setNewPassword] = useState('');
@@ -172,13 +192,17 @@ function UsersSection({ users, error, me, onChanged }) {
       onChanged();
     } catch (err) {
       setNotice({ tone: 'error', text: err.message });
+      setDeleteId(null);
     } finally {
       setBusy(null);
     }
   }
 
+  const deleting = users?.find(u => u.id === deleteId) || null;
+  const anyInGame = !!users?.some(u => u.in_game);
+
   return (
-    <section className={`${ui.panel} ${s.section}`} aria-labelledby={`${id}-title`}>
+    <section className={s.section} aria-labelledby={`${id}-title`}>
       <div className={s.sectionHead}>
         <h2 id={`${id}-title`} className={s.sectionTitle}>Accounts</h2>
         {users && <span className={s.count}>{users.length}</span>}
@@ -186,46 +210,51 @@ function UsersSection({ users, error, me, onChanged }) {
 
       <Notice notice={notice} />
       {error && <Notice notice={{ tone: 'error', text: `Could not load accounts: ${error}` }} />}
-      {!users && !error && <p className={ui.hint}>Loading accounts…</p>}
-      {users && users.length === 0 && <p className={ui.hint}>No accounts yet.</p>}
+      {!users && !error && <p className={s.checking}><span className="ui-spinner" aria-hidden="true" />Loading accounts…</p>}
+      {users && users.length === 0 && <p className={s.copy}>No accounts yet.</p>}
 
       {users && users.length > 0 && (
         <ul className={s.users}>
           {users.map(user => {
             const isMe = user.id === me?.id;
-            const added = dayLabel(user.created_at);
+            const day = dayLabel(user.created_at);
+            const added = day === 'Today' || day === 'Yesterday' ? day.toLowerCase() : day;
+            const player = seated.get(user.id);
             return (
               <li key={user.id} className={s.user}>
-                <span className={s.token} aria-hidden="true">{tokenEmoji(user.token_type)}</span>
+                {player
+                  ? <Medallion player={player} size={40} />
+                  : <Medallion token={user.token_type} color="var(--slate)" size={40} />}
                 <div className={s.userInfo}>
                   <p className={s.userName}>
-                    <span>{user.username}</span>
-                    {isMe && <span className={s.you}>(you)</span>}
-                    {user.in_game && <span className={`${ui.badge} ${ui.badgeGold}`}>In game</span>}
+                    <span className={s.userNameText}>{user.username}</span>
+                    {isMe && <span className="ui-tag">you</span>}
+                    {user.in_game && <span className="ui-tag ui-tag--quiet">In game</span>}
                   </p>
                   <p className={s.userMeta}>
                     {tokenLabel(user.token_type)}
-                    {added && ` · added ${added}`}
-                    {user.in_game && ' · remove them from the game before deleting'}
+                    {added && `, added ${added}`}
                   </p>
                 </div>
                 <div className={s.userActions}>
                   <button
                     type="button"
-                    className={`${ui.btn} ${ui.outline} ${ui.small}`}
+                    className="ui-btn ui-btn--secondary ui-btn--sm"
                     onClick={() => openPassword(user.id)}
                     aria-expanded={passwordFor === user.id}
                     aria-controls={`${id}-pw-${user.id}`}
                   >
+                    <Icon name="key" size={18} />
                     Reset password
                   </button>
-                  {!isMe && deleteId !== user.id && (
+                  {!isMe && (
                     <button
                       type="button"
-                      className={`${ui.btn} ${ui.dangerOutline} ${ui.small}`}
+                      className="ui-btn ui-btn--danger ui-btn--sm"
                       onClick={() => { setDeleteId(user.id); setPasswordFor(null); setNotice(null); }}
                       disabled={user.in_game || !!busy}
                       aria-label={`Delete ${user.username}`}
+                      aria-describedby={user.in_game ? `${id}-ingame` : undefined}
                     >
                       Delete
                     </button>
@@ -234,13 +263,12 @@ function UsersSection({ users, error, me, onChanged }) {
 
                 {passwordFor === user.id && (
                   <form id={`${id}-pw-${user.id}`} className={s.inlineForm} onSubmit={e => savePassword(e, user)}>
-                    <label className={ui.label} htmlFor={`${id}-pw-input-${user.id}`}>
+                    <label className="ui-label" htmlFor={`${id}-pw-input-${user.id}`}>
                       New password for {user.username}
                     </label>
                     <div className={s.inlineRow}>
                       <input
                         id={`${id}-pw-input-${user.id}`}
-                        className={ui.input}
                         type="text"
                         value={newPassword}
                         onChange={e => setNewPassword(e.target.value)}
@@ -253,44 +281,48 @@ function UsersSection({ users, error, me, onChanged }) {
                       />
                       <button
                         type="submit"
-                        className={`${ui.btn} ${ui.primary}`}
+                        className="ui-btn ui-btn--secondary"
                         disabled={newPassword.length < MIN_PASSWORD || !!busy}
                       >
+                        {busy === 'password' && <span className="ui-spinner" aria-hidden="true" />}
                         {busy === 'password' ? 'Saving…' : 'Save'}
                       </button>
-                      <button type="button" className={`${ui.btn} ${ui.ghost}`} onClick={() => setPasswordFor(null)}>
+                      <button type="button" className="ui-btn ui-btn--ghost" onClick={() => setPasswordFor(null)}>
                         Cancel
                       </button>
                     </div>
-                    <p id={`${id}-pw-hint-${user.id}`} className={ui.hint}>
+                    <p id={`${id}-pw-hint-${user.id}`} className="ui-hint">
                       At least {MIN_PASSWORD} characters. It is shown as you type so you can pass it on.
                     </p>
                   </form>
-                )}
-
-                {deleteId === user.id && (
-                  <div className={s.inlineForm}>
-                    <ConfirmStep
-                      message={`Delete ${user.username}'s account?`}
-                      detail="This can't be undone. Their chat messages are deleted too."
-                      confirmLabel="Delete account"
-                      busy={busy === 'delete'}
-                      busyLabel="Deleting…"
-                      onConfirm={() => deleteUser(user)}
-                      onCancel={() => setDeleteId(null)}
-                    />
-                  </div>
                 )}
               </li>
             );
           })}
         </ul>
       )}
+
+      {anyInGame && (
+        <p id={`${id}-ingame`} className={`ui-hint ${s.listNote}`}>
+          Accounts in the current game can't be deleted. Remove them from the game, or reset it, first.
+        </p>
+      )}
+
+      <ConfirmDialog
+        open={!!deleting}
+        title={deleting ? `Delete ${deleting.username}'s account?` : ''}
+        body="This can't be undone. Their chat messages are deleted too, and their token becomes free for a new account."
+        confirmLabel="Delete account"
+        busy={busy === 'delete'}
+        busyLabel="Deleting…"
+        onConfirm={() => deleting && deleteUser(deleting)}
+        onCancel={() => setDeleteId(null)}
+      />
     </section>
   );
 }
 
-function CreateUserSection({ users, onCreated }) {
+function CreateUserSection({ users, error, onCreated }) {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [picked, setPicked] = useState(null);
@@ -298,10 +330,14 @@ function CreateUserSection({ users, onCreated }) {
   const [notice, setNotice] = useState(null);
   const id = useId();
 
+  // Until the accounts load, nobody knows which tokens are free: no "Free" labels and no preselected token
+  // that might flip to "Taken" a moment later.
+  const loading = !users;
+  const unknown = loading && !!error; // the accounts failed to load: the notice above says so
   const takenBy = new Map();
   for (const user of users || []) takenBy.set(user.token_type, user.username);
   const free = TOKEN_TYPES.filter(type => !takenBy.has(type));
-  const tokenType = picked && !takenBy.has(picked) ? picked : free[0] || null;
+  const tokenType = loading ? null : picked && !takenBy.has(picked) ? picked : free[0] || null;
 
   const trimmed = username.trim();
   const nameOk = USERNAME_RULE.test(trimmed);
@@ -328,20 +364,21 @@ function CreateUserSection({ users, onCreated }) {
   }
 
   return (
-    <section className={`${ui.panel} ${s.section}`} aria-labelledby={`${id}-title`}>
-      <h2 id={`${id}-title`} className={s.sectionTitle}>Add a player account</h2>
+    <section className={s.section} aria-labelledby={`${id}-title`}>
+      <div className={s.sectionHead}>
+        <h2 id={`${id}-title`} className={s.sectionTitle}>Add a player account</h2>
+      </div>
       <Notice notice={notice} />
       {users && free.length === 0 && (
-        <p className={ui.notice}>All {TOKEN_TYPES.length} tokens are taken. Delete an account to free one up.</p>
+        <Notice notice={{ tone: 'info', text: `All ${TOKEN_TYPES.length} tokens are taken. Delete an account to free one up.` }} />
       )}
 
       <form className={s.form} onSubmit={handleSubmit} noValidate>
         <div className={s.formRow}>
-          <div className={ui.field}>
-            <label className={ui.label} htmlFor={`${id}-name`}>Username</label>
+          <div className="ui-field">
+            <label className="ui-label" htmlFor={`${id}-name`}>Username</label>
             <input
               id={`${id}-name`}
-              className={ui.input}
               type="text"
               value={username}
               onChange={e => setUsername(e.target.value)}
@@ -353,15 +390,14 @@ function CreateUserSection({ users, onCreated }) {
               aria-invalid={trimmed && !nameOk ? 'true' : undefined}
               aria-describedby={`${id}-name-hint`}
             />
-            <p id={`${id}-name-hint`} className={trimmed && !nameOk ? ui.errorText : ui.hint}>
+            <p id={`${id}-name-hint`} className={trimmed && !nameOk ? 'ui-error' : 'ui-hint'}>
               2–30 letters, numbers, dots, dashes or underscores. Logins ignore capitals.
             </p>
           </div>
-          <div className={ui.field}>
-            <label className={ui.label} htmlFor={`${id}-password`}>Password</label>
+          <div className="ui-field">
+            <label className="ui-label" htmlFor={`${id}-password`}>Password</label>
             <input
               id={`${id}-password`}
-              className={ui.input}
               type="text"
               value={password}
               onChange={e => setPassword(e.target.value)}
@@ -372,32 +408,42 @@ function CreateUserSection({ users, onCreated }) {
               aria-invalid={password && !passwordOk ? 'true' : undefined}
               aria-describedby={`${id}-password-hint`}
             />
-            <p id={`${id}-password-hint`} className={password && !passwordOk ? ui.errorText : ui.hint}>
+            <p id={`${id}-password-hint`} className={password && !passwordOk ? 'ui-error' : 'ui-hint'}>
               At least {MIN_PASSWORD} characters.
             </p>
           </div>
         </div>
 
-        <fieldset className={s.tokens}>
-          <legend className={ui.label}>Token</legend>
-          <div className={s.tokenGrid}>
+        <fieldset className={s.tokens} disabled={loading} aria-busy={(loading && !unknown) || undefined}>
+          <legend className={`ui-label ${s.legend}`}>Token</legend>
+          {loading && (
+            <p className={s.tokensChecking}>
+              {unknown ? "Can't tell which tokens are free until the accounts load." : <><span className="ui-spinner" aria-hidden="true" />Checking which tokens are free…</>}
+            </p>
+          )}
+          <div className={`${s.tokenGrid} ${loading ? s.tokenGridLoading : ''}`}>
             {TOKEN_TYPES.map(type => {
               const owner = takenBy.get(type);
+              const chosen = tokenType === type;
               return (
                 <label key={type} className={s.tokenOption}>
                   <input
-                    className={ui.srOnly}
+                    className="sr-only"
                     type="radio"
                     name={`${id}-token`}
                     value={type}
-                    checked={tokenType === type}
-                    disabled={!!owner}
+                    checked={chosen}
+                    disabled={loading || !!owner}
                     onChange={() => setPicked(type)}
                   />
                   <span className={s.tokenFace}>
-                    <span className={s.tokenEmoji} aria-hidden="true">{tokenEmoji(type)}</span>
-                    <span className={s.tokenName}>{tokenLabel(type)}</span>
-                    <span className={s.tokenOwner}>{owner ? `Taken by ${owner}` : 'Free'}</span>
+                    <Medallion token={type} color={chosen ? 'var(--brass-300)' : 'var(--slate)'} size={36} />
+                    <span className={s.tokenText}>
+                      <span className={s.tokenName}>{tokenLabel(type)}</span>
+                      {loading
+                        ? <span className={s.tokenOwnerPending} aria-hidden="true" />
+                        : <span className={s.tokenOwner}>{owner ? `Taken by ${owner}` : 'Free'}</span>}
+                    </span>
                   </span>
                 </label>
               );
@@ -405,9 +451,12 @@ function CreateUserSection({ users, onCreated }) {
           </div>
         </fieldset>
 
-        <button type="submit" className={`${ui.btn} ${ui.primary}`} disabled={!canSubmit}>
-          {busy ? 'Creating…' : 'Create account'}
-        </button>
+        <div className={s.formActions}>
+          <button type="submit" className="ui-btn ui-btn--primary" disabled={!canSubmit}>
+            {busy ? <span className="ui-spinner" aria-hidden="true" /> : <Icon name="user-plus" size={20} />}
+            {busy ? 'Creating…' : 'Create account'}
+          </button>
+        </div>
       </form>
     </section>
   );
@@ -481,6 +530,7 @@ function GameSection({ gameState, error, onState, onChanged }) {
       setResetNotice({ tone: 'success', text: 'The game is back in the lobby. Everyone kept their seat.' });
     } catch (err) {
       setResetNotice({ tone: 'error', text: err.message });
+      setConfirmReset(false);
     } finally {
       setResetBusy(false);
     }
@@ -489,19 +539,24 @@ function GameSection({ gameState, error, onState, onChanged }) {
   const status = statusLine(gameState);
 
   return (
-    <section className={`${ui.panel} ${s.section}`} aria-labelledby={`${id}-title`}>
-      <h2 id={`${id}-title`} className={s.sectionTitle}>Game</h2>
+    <section className={s.section} aria-labelledby={`${id}-title`}>
+      <div className={s.sectionHead}>
+        <h2 id={`${id}-title`} className={s.sectionTitle}>Game</h2>
+      </div>
       {error && <Notice notice={{ tone: 'error', text: `Could not load the game: ${error}` }} />}
       {status && <p className={s.copy}>{status}</p>}
 
       <form className={s.subsection} onSubmit={saveHours}>
-        <h3 className={s.subTitle}>Turn timer</h3>
+        <h3 className={s.subTitle}>
+          <Icon name="clock" size={18} />
+          Turn timer
+        </h3>
         <Notice notice={settingsNotice} />
-        <label className={ui.label} htmlFor={`${id}-hours`}>Hours per turn</label>
+        <label className="ui-label" htmlFor={`${id}-hours`}>Hours per turn</label>
         <div className={s.inlineRow}>
           <input
             id={`${id}-hours`}
-            className={`${ui.input} ${s.hoursInput}`}
+            className={s.hoursInput}
             type="text"
             inputMode="numeric"
             pattern="[0-9]*"
@@ -512,43 +567,48 @@ function GameSection({ gameState, error, onState, onChanged }) {
             aria-describedby={`${id}-hours-hint`}
             disabled={!gameState}
           />
-          <button type="submit" className={`${ui.btn} ${ui.primary}`} disabled={!hoursChanged || settingsBusy}>
+          <button type="submit" className="ui-btn ui-btn--secondary" disabled={!hoursChanged || settingsBusy}>
+            {settingsBusy && <span className="ui-spinner" aria-hidden="true" />}
             {settingsBusy ? 'Saving…' : 'Save'}
           </button>
         </div>
-        <p id={`${id}-hours-hint`} className={hoursValue !== '' && !hoursValid ? ui.errorText : ui.hint}>
-          0 means no limit; at most {MAX_TURN_HOURS} (a week). When time runs out the turn is skipped. A change applies
-          from the next turn.
+        <p id={`${id}-hours-hint`} className={hoursValue !== '' && !hoursValid ? 'ui-error' : 'ui-hint'}>
+          0 means no limit; at most {MAX_TURN_HOURS} (a week). When time runs out the turn is played automatically. A
+          change applies from the next turn.
         </p>
       </form>
 
-      <div className={`${s.subsection} ${s.danger}`}>
-        <h3 className={s.subTitle}>Reset the game</h3>
+      <div className={s.subsection}>
+        <h3 className={`${s.subTitle} ${s.dangerTitle}`}>
+          <Icon name="refresh" size={18} />
+          Reset the game
+        </h3>
         <Notice notice={resetNotice} />
         <p className={s.copy}>
           Ends the current game and returns everyone to the lobby. Players keep their seats, but money, properties,
           buildings, trades and the game log are cleared. Chat stays.
         </p>
-        {confirmReset ? (
-          <ConfirmStep
-            message="Reset the game now?"
-            detail="This can't be undone. Everyone goes back to the lobby."
-            confirmLabel="Reset game"
-            busy={resetBusy}
-            busyLabel="Resetting…"
-            onConfirm={resetGame}
-            onCancel={() => setConfirmReset(false)}
-          />
-        ) : (
+        <div>
           <button
             type="button"
-            className={`${ui.btn} ${ui.dangerOutline}`}
+            className="ui-btn ui-btn--danger"
             onClick={() => { setConfirmReset(true); setResetNotice(null); }}
           >
             Reset game…
           </button>
-        )}
+        </div>
       </div>
+
+      <ConfirmDialog
+        open={confirmReset}
+        title="Reset the game now?"
+        body="This can't be undone. Everyone goes back to the lobby; money, properties, buildings, trades and the log are cleared."
+        confirmLabel="Reset game"
+        busy={resetBusy}
+        busyLabel="Resetting…"
+        onConfirm={resetGame}
+        onCancel={() => setConfirmReset(false)}
+      />
     </section>
   );
 }

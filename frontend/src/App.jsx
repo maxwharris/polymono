@@ -10,6 +10,7 @@ import AppBoundary from './components/AppBoundary';
 import Toaster from './components/game/Toaster';
 import ConnectionBanner from './components/game/ConnectionBanner';
 import Wordmark from './components/ui/Wordmark';
+import Icon from './components/ui/Icon';
 
 // Dev only: /specimen renders every token, icon, medallion, dial and surface of the design system.
 // import.meta.env.DEV is false in a build, so the page is not bundled.
@@ -19,12 +20,18 @@ function Splash({ text, actions = false }) {
   const { resync, logout } = useGameStore(useShallow(s => ({ resync: s.resync, logout: s.logout })));
   return (
     <div className="splash" role="status">
-      <Wordmark size="lg" />
-      <p className="splash-text">{text}</p>
+      <Wordmark size="lg" sub="Manhattan edition" />
+      <p className="splash-text"><span className="ui-spinner" aria-hidden="true" />{text}</p>
       {actions && (
         <div className="splash-actions">
-          <button type="button" className="g-btn g-btn--secondary" onClick={() => resync()}>Try again</button>
-          <button type="button" className="g-btn g-btn--ghost" onClick={() => logout()}>Log out</button>
+          <button type="button" className="ui-btn ui-btn--secondary" onClick={() => resync()}>
+            <Icon name="refresh" size={20} />
+            Try again
+          </button>
+          <button type="button" className="ui-btn ui-btn--ghost" onClick={() => logout()}>
+            <Icon name="logout" size={20} />
+            Log out
+          </button>
         </div>
       )}
     </div>

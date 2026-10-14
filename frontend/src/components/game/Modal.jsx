@@ -5,9 +5,13 @@ const SUPPORTS_CLOSEDBY = typeof HTMLDialogElement !== 'undefined' && 'closedBy'
 
 /**
  * A native modal <dialog> (top layer, focus trap, Esc) driven by `open`. `onClose` runs however it closes:
- * Esc, a tap on the backdrop (closedby="any", with a fallback for Safari) or open becoming false.
- * variant 'center' is a centred card; 'sheet' is a bottom sheet on phones and a centred card on desktop.
- * Children only render while open.
+ * Esc, a tap on the scrim (closedby="any", with a fallback for Safari) or open becoming false.
+ * variant 'center' is a centred dialog at every width (ui-modal: confirmations); 'sheet' is a bottom sheet on
+ * phones with a grabber and a centred 560px dialog from 900px (ui-sheet). Children only render while open.
+ *
+ * Initial focus: mark the harmless control with `data-autofocus` (Cancel, OK, Close). React's autoFocus does
+ * not work here: it focuses on mount, then showModal() moves focus to the first focusable control, which in a
+ * confirmation is the destructive one. Without a mark, the browser's choice (the first control) stands.
  */
 export default function Modal({ open, onClose, labelledBy, label, variant = 'center', dismissible = true, className = '', children }) {
   const ref = useRef(null);
@@ -18,6 +22,7 @@ export default function Modal({ open, onClose, labelledBy, label, variant = 'cen
     if (open && !dialog.open) {
       if (typeof dialog.showModal === 'function') dialog.showModal();
       else dialog.setAttribute('open', '');
+      dialog.querySelector('[data-autofocus]')?.focus({ preventScroll: true });
     } else if (!open && dialog.open) {
       dialog.close();
     }
@@ -36,10 +41,11 @@ export default function Modal({ open, onClose, labelledBy, label, variant = 'cen
     if (!inside) event.currentTarget.close();
   }
 
+  const sheet = variant === 'sheet';
   return (
     <dialog
       ref={ref}
-      className={`g-modal g-modal--${variant} ${className}`}
+      className={`${sheet ? 'ui-sheet g-sheet' : 'ui-modal g-dialog'} ${className}`}
       closedby={dismissible ? 'any' : 'none'}
       aria-labelledby={labelledBy}
       aria-label={labelledBy ? undefined : label}
@@ -47,6 +53,7 @@ export default function Modal({ open, onClose, labelledBy, label, variant = 'cen
       onCancel={handleCancel}
       onClick={handleClick}
     >
+      {open && sheet && <div className="ui-sheet__grab" aria-hidden="true" />}
       {open ? children : null}
     </dialog>
   );

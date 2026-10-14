@@ -20,7 +20,9 @@ design doc (direction C) plus the judge's grafts and must-fix list; this folder 
 - **Turn-panel headlines stay on one line** (`ui-headline`). At 375px the budget is **291px**, or **217px** with dice
   beside it. Measured at 21px: "jack is deciding on Wall Street" 239, "You landed on Tribeca" 172, "One World Trade
   Center" 182, "You landed on One World Trade Center" 297 (too long: put the place in the sub line), "youngeun is
-  deciding on Grand Central Station" 366 (too long). The specimen shows both budgets.
+  deciding on Grand Central Station" 366 (too long). The specimen shows both budgets. In the game,
+  `FitHeadline` (`game/bits.jsx`) takes the options longest first and shows the first whose headline and sub line
+  both fit, measured again on every resize, font load and text change, so the long form comes back when there is room.
 - **Blocked actions stay visible and disabled**, with the server's reason in `ui-reason` underneath (4.5:1+).
 - **Sentence case**, no all-caps eyebrows, no "A · B · C" strings, no "→" or "=" arithmetic in copy.
 - **Touch targets 44px+**, visible brass focus ring (`:focus-visible` is global), inputs 17px (iOS zoom).
@@ -53,23 +55,13 @@ design doc (direction C) plus the judge's grafts and must-fix list; this folder 
   new `tokenGlyph(type)` (path data) and `TOKEN_GLYPH_VIEWBOX`. Label "Subway" is now "Subway car".
   The glyphs were traced from orthographic renders of the six GLB models (taxi, pigeon, rat, Empire State) or drawn
   over them (the subway car on its rail; the bull head-on, because its side view reads as a pig). The rat's pizza slice
-  was dropped: at 22px it read as a stick.
-  **`tokenEmoji()` is a TEMPORARY shim**: it now returns a 1em `<svg class="ui-glyph ui-glyph--inline">` in
-  `var(--pc, currentColor)`, so old screens show drawn glyphs instead of emoji. Replace each call with
-  `<Medallion>`/`<TokenGlyph>` and delete it. Callers today: `Admin.jsx`, `Lobby.jsx`, `game/ActivityFeed.jsx`,
-  `game/TopBar.jsx`, `game/bits.jsx`, `trade/TradeBuilder.jsx`, `trade/TradeTerms.jsx`.
+  was dropped: at 22px it read as a stick. The old `tokenEmoji()` shim is gone: use `<Medallion>` or `<TokenGlyph>`.
+- `lib/events.js`: `EVENT_ICONS` maps every event type to an `<Icon>` name; `eventText(event, { myUserId, players,
+  properties })` is the feed sentence, with the viewer's own lines as "You bought Tribeca for $200" and "seabass paid
+  you $25 rent for Tribeca" (unknown types keep the server's text).
 - `App.jsx`: the splash shows `<Wordmark size="lg">` instead of `/polymono-logo.webp`.
 
-### Emoji still in the screens (for their owners)
-
-`lib/events.js` (event icons: map them to `<Icon>` names: roll → dice, move → step, salary/money/rent/fine/tax → note,
-buy → house, card → card, jail/jail_stay/jail_release → bars, build/sell_building → house, mortgage/unmortgage → bank,
-trade_* → trade, bankrupt → close, game_over → crown, join/ready/start → players, turn_skipped → clock),
-`lib/presenter.js`, `game/TabBar.jsx`, `game/TopBar.jsx`, `game/TurnActionPanel.jsx`, `game/AwayDigest.jsx`,
-`game/GameOver.jsx`, `game/MyPropertiesDrawer.jsx`, `game/CardModal.jsx`, `game/PlayerSheet.jsx`,
-`game/PlayersPanel.jsx`, `game/PropertySheet.jsx`, `Chat.jsx`, `Lobby.jsx`, `trade/OfferCard.jsx`,
-`trade/TradeBuilder.jsx`, `trade/TradeDialog.jsx`, `trade/TradeHistory.jsx`, `trade/TradeTerms.jsx` (the `'👤'`
-fallback). `/polymono-logo.webp` is still used by `TopBar`, `Login`, `Lobby` and `Admin`: use `<Wordmark>`.
+No screen uses emoji or the raster logo any more; keep it that way.
 
 ## Tokens (`src/index.css`)
 
@@ -128,19 +120,12 @@ special spaces, `--swatch-ring` the inner ring every swatch carries.
 **Motion:** `--ease-out` sheets and toasts, `--ease-needle` the dial's overshoot, `--dur-quick` 160, `--dur-base` 220,
 `--dur-sheet` 280, `--dur-money` 400, `--dur-needle` 700 (0 under reduced motion).
 
-**Layout:** `--topbar-h` 52 and `--tabbar-h` 58 are the current screens' values (design: 56/64 and 49 + safe area;
-change them when those bars are restyled). `--safe-top/-bottom/-left/-right`.
+**Layout:** `--topbar-h` 56 (64 from 900px) and `--tabbar-h` 49, both without the safe area (add `--safe-top` /
+`--safe-bottom`). The game shell, the toaster and the connection banner use them; don't repeat the numbers.
+`--safe-top/-bottom/-left/-right`.
 
-### TEMPORARY aliases (remove when the last screen using them is restyled)
-
-`--bg-primary` → room, `--bg-secondary` → lacquer, `--bg-card` and `--card-bg` → raised, `--bg-hover` → raised-hover,
-`--bg-deep` → well, `--text-primary` → marble, `--text-secondary` → limestone, `--text-muted` → slate,
-`--border-color` → seam-strong, `--line` → seam, `--gold` → brass-400, `--gold-bright` → brass-300,
-`--monopoly-gold` → brass-400, `--monopoly-dark-gold` → brass-500, `--monopoly-cream` → paper, `--danger` #D63B40
-(legacy red that holds white text), `--danger-text` → stop, `--success` → go, `--warn` → brass-300, `--info` → brass-300,
-`--font-body` → font-text, `--spacing-xs…xl` → space-1/2/4/6/8, `--radius-sm/md/lg/xl` 4/8/12/16,
-`--shadow-sm/md/lg/xl`. `screens/ui.module.css` builds its `--pm-*` set on these; `game.css` still hard-codes some old
-greens (for example `#135a40` in `.game`).
+The old green-and-gold alias tokens (`--bg-*`, `--text-primary/-secondary/-muted`, `--gold*`, `--monopoly-*`,
+`--danger*`, `--spacing-*`, `--radius-*`, `--shadow-sm…xl` and the rest) are gone: use the tokens above.
 
 ## Classes (`ui.css`)
 
@@ -149,13 +134,14 @@ greens (for example `#135a40` in `.game`).
 `ui-meta`; `ui-micro`; `ui-money` (+ `--l`, `--xl`; `.is-in` brass flash, `.is-out` stop flash when cash changes; colour is
 inherited); `ui-countdown` (+ `.is-soon`, `.is-urgent`) with an `<Icon name="clock">` inside.
 
-**Icons:** `ui-icon` (set by `<Icon>`), `ui-glyph` (set by `<TokenGlyph>`), `ui-glyph--inline` (the `tokenEmoji` shim).
+**Icons:** `ui-icon` (set by `<Icon>`), `ui-glyph` (set by `<TokenGlyph>`).
 
 **Buttons:** `ui-btn` (default = secondary: raised, seam-strong outline, 48px); `ui-btn--primary` flat brass, one per
 view; `ui-btn--secondary`; `ui-btn--ghost` quiet 44px, slate icon (the "more" row, Close); `ui-btn--danger` stop outline;
 `ui-btn--danger-solid` filled stop, only the destructive button of a confirm dialog; `ui-btn--tint` brass-tinted
 (toast action); sizes `ui-btn--lg` 56, `ui-btn--sm` 44; `ui-btn--block` full width; `ui-btn--icon` 44px round (needs
-`aria-label`); `ui-btn__stack` + `ui-btn__sub` two lines ("Buy for $200" / "Leaves you $1,160"). `:disabled` or
+`aria-label`); `ui-btn__stack` + `ui-btn__sub` two lines ("Buy for $200" / "Leaves you $1,160"; `ui-btn__sub ui-money`
+on one element keeps tabular figures, "+$90"). `:disabled` or
 `aria-disabled="true"` gives the blocked look; `ui-reason` is the reason line under it. `ui-spinner` inline spinner.
 A button is a flex row with an 8px gap between children, so keep a label and its amount in one span
 (`<span>Pay <span class="ui-money">$450</span></span>`) and let the gap separate only icons and badges.
@@ -166,6 +152,9 @@ A button is a flex row with an 8px gap between children, so keep a label and its
 - `ui-sheet` bottom sheet on phone, centred 560px dialog from 900px; works on `<dialog>` (`showModal()`, `::backdrop`
   scrim, rise animation). Parts: `ui-sheet__grab`, `ui-sheet__head`, `ui-sheet__title` (Antonio 30), `ui-sheet__actions`.
 - `ui-modal` centred dialog at every width (confirmations): `ui-modal__title`, `ui-modal__body`, `ui-modal__actions`.
+- Initial focus in a dialog: `showModal()` focuses the first focusable control, and React's `autoFocus` loses to it.
+  The game's `Modal` focuses `[data-autofocus]` after opening: put it on Cancel in a confirmation (never on the
+  destructive button), and on OK, Close or the harmless primary elsewhere. `screens/ConfirmDialog` focuses Cancel itself.
 - `ui-scrim` a fixed scrim for non-dialog overlays.
 - `ui-menu` lifted popover; `ui-menu__item` 48px icon rows (`--danger` for Log out); `ui-menu__sep`.
 - `ui-toast` lifted card (grid: medallion | text | close); `--error` stop rule; `--plain` without a medallion; parts

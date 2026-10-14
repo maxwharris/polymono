@@ -18,6 +18,7 @@ function readFollow() {
 }
 
 let floaterSeq = 0;
+const drawnArt = new Set(); // keys of the board art (tiles, centre) on screen, or given up on after a failure
 
 const useBoardAnim = create((set, get) => ({
   shown: {}, // playerId -> board index the token stands on
@@ -30,7 +31,10 @@ const useBoardAnim = create((set, get) => ({
   landing: null, // { position, playerId, nonce }: highlight under the space just landed on
   floaters: [], // { id, position, amount, label }: "+$200" style labels over the board
   follow: readFollow(), // camera follows walking tokens
+  tracking: null, // playerId the camera is following right now (CameraRig sets it; the Follow button names them)
   recenterNonce: 0, // bump to fly the camera back to the overview
+  artDrawn: 0, // how many pieces of board art are drawn (the loading pill counts these, not the token models)
+  artReady: false, // all of it was drawn once: stays true, so a tile's later retry never brings the pill back
 
   /** Positions from the server snapshot. Players not in the list are dropped. */
   syncPlayers: (players, { snap = false } = {}) => {
@@ -72,6 +76,15 @@ const useBoardAnim = create((set, get) => ({
   },
 
   recenter: () => set(s => ({ recenterNonce: s.recenterNonce + 1 })),
+
+  /** A piece of board art (`key`) is drawn, or gone again; `total` is how many pieces the board has. */
+  markArt: (key, drawn, total) => {
+    if (drawn) drawnArt.add(key);
+    else drawnArt.delete(key);
+    const prev = get();
+    const artReady = prev.artReady || drawnArt.size >= total;
+    if (prev.artDrawn !== drawnArt.size || prev.artReady !== artReady) set({ artDrawn: drawnArt.size, artReady });
+  },
 
   /** Forget the dice, highlight and floaters of what was shown before (a new board, game or login). */
   reset: () => set({ dice: null, walking: null, landing: null, floaters: [] })

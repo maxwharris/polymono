@@ -1,9 +1,13 @@
 import { useId, useMemo } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import useGameStore, { selectIsMyTurn, selectMyPlayer } from '../../store/gameStore';
-import { buildDigest, eventIcon } from '../../lib/events';
+import { buildDigest } from '../../lib/events';
 import { money, plural } from '../../lib/format';
+import Icon from '../ui/Icon';
+import { FeedLine } from './ActivityFeed';
 import Modal from './Modal';
+import './feed.css';
+import './sheets.css';
 
 /** "While you were away": shown on load or on return when at least a few things happened. */
 export default function AwayDigest() {
@@ -30,34 +34,42 @@ export default function AwayDigest() {
   const open = !!digest && status === 'in_progress';
 
   return (
-    <Modal open={open} onClose={dismissDigest} labelledBy={titleId} className="digest">
+    <Modal open={open} onClose={dismissDigest} labelledBy={titleId} variant="sheet" className="digest">
       {digest && (
         <>
-          <h2 id={titleId} className="g-modal-title">While you were away</h2>
-          <p className="g-modal-sub">{plural(digest.turns, 'turn')} played, {plural(digest.count, 'thing')} happened.</p>
-          <ul className="digest-facts">
-            {me && <li><span aria-hidden="true">💵</span> You have <strong className="money">{money(me.money)}</strong></li>}
-            {digest.rentIn > 0 && <li><span aria-hidden="true">💰</span> You collected <strong className="money">{money(digest.rentIn)}</strong> in rent</li>}
-            {digest.rentOut > 0 && <li><span aria-hidden="true">💸</span> You paid <strong className="money">{money(digest.rentOut)}</strong> in rent</li>}
-            {digest.tradesForMe > 0 && <li><span aria-hidden="true">🤝</span> {plural(digest.tradesForMe, 'trade offer')} for you</li>}
-            {digest.purchases.slice(-4).map((text, i) => <li key={`buy-${i}`}><span aria-hidden="true">🏠</span> {text}</li>)}
-            {digest.bankruptcies.map((text, i) => <li key={`bk-${i}`}><span aria-hidden="true">💥</span> {text}</li>)}
-            {digest.inJail.length > 0 && <li><span aria-hidden="true">🚓</span> In Rikers: {digest.inJail.join(', ')}</li>}
+          <div className="ui-sheet__head">
+            <h2 id={titleId} className="ui-sheet__title">While you were away</h2>
+          </div>
+          <p className="digest__sub">{plural(digest.turns, 'turn')} played and {plural(digest.count, 'thing')} happened.</p>
+          <ul className="digest__facts">
+            {me && <li><Icon name="note" size={20} /><span>You have <span className="ui-money">{money(me.money)}</span></span></li>}
+            {digest.rentIn > 0 && <li><Icon name="note" size={20} /><span>You collected <span className="ui-money">{money(digest.rentIn)}</span> in rent</span></li>}
+            {digest.rentOut > 0 && <li><Icon name="note" size={20} /><span>You paid <span className="ui-money">{money(digest.rentOut)}</span> in rent</span></li>}
+            {digest.tradesForMe > 0 && <li className="is-brass"><Icon name="trade" size={20} /><span>{plural(digest.tradesForMe, 'trade offer')} for you</span></li>}
+            {digest.purchases.slice(-4).map((text, i) => <li key={`buy-${i}`}><Icon name="house" size={20} /><span>{text}</span></li>)}
+            {digest.bankruptcies.map((text, i) => <li key={`bk-${i}`}><Icon name="close" size={20} /><span>{text}</span></li>)}
+            {digest.inJail.length > 0 && <li><Icon name="bars" size={20} /><span>In Rikers: {digest.inJail.join(', ')}</span></li>}
           </ul>
           {digest.highlights.length > 0 && (
             <>
-              <h3 className="g-subtitle">Involving you</h3>
-              <ul className="digest-lines">
-                {digest.highlights.map(e => (
-                  <li key={e.id}><span aria-hidden="true">{eventIcon(e)}</span> {e.text}</li>
-                ))}
+              <h3 className="digest__h">Involving you</h3>
+              <ul className="feed__lines digest__lines">
+                {digest.highlights.map(line => <FeedLine key={line.id} line={line} mine />)}
               </ul>
             </>
           )}
-          <div className="g-modal-actions">
+          <div className="ui-sheet__actions">
+            <button type="button" className="ui-btn ui-btn--primary" onClick={dismissDigest} data-autofocus>
+              {isMyTurn ? 'Take your turn' : 'Got it'}
+            </button>
+            {digest.tradesForMe > 0 && (
+              <button type="button" className="ui-btn ui-btn--secondary" onClick={() => { dismissDigest(); openTrade(); }}>
+                See offers
+              </button>
+            )}
             <button
               type="button"
-              className="g-btn g-btn--ghost"
+              className="ui-btn ui-btn--ghost"
               onClick={() => {
                 dismissDigest();
                 setSideTab('activity');
@@ -65,14 +77,6 @@ export default function AwayDigest() {
               }}
             >
               Full log
-            </button>
-            {digest.tradesForMe > 0 && (
-              <button type="button" className="g-btn g-btn--secondary" onClick={() => { dismissDigest(); openTrade(); }}>
-                See offers
-              </button>
-            )}
-            <button type="button" className="g-btn g-btn--primary" onClick={dismissDigest} autoFocus>
-              {isMyTurn ? 'Take your turn' : 'Got it'}
             </button>
           </div>
         </>

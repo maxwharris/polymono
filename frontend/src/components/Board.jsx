@@ -1,18 +1,19 @@
 // The 3D board. Fills its parent; takes no props. Reads the game from gameStore with selectors only, and
 // plays dice and token animations from game events through the director (board/director.js).
 //
-// Pieces live in components/board/: layout (geometry), Spaces (tiles, bands, owners, buildings, clicks),
-// Tokens, Dice, CameraRig, Floaters, director + registry (animation), assets (hashed URLs, preloading).
-// Preload from the lobby with `import { preloadBoard } from './board/assets'`.
+// Pieces live in components/board/: layout (geometry), Room (lights, the navy table with its baked lamp pool,
+// the lacquer slab and its brass inlay), Spaces (tiles, bands, owner discs, buildings, clicks), Tokens, Dice,
+// CameraRig, Floaters, director + registry (animation), assets (hashed URLs, preloading), staging (baked
+// textures), environment (the metal's environment map). Preload from the lobby with
+// `import { preloadBoard } from './board/assets'`.
 import { memo, useCallback, useEffect, useState } from 'react';
 import { Canvas, useThree } from '@react-three/fiber';
-import { useProgress } from '@react-three/drei';
 import * as THREE from 'three';
 import useGameStore from '../store/gameStore';
 import useBoardAnim from '../store/boardAnim';
-import { playerColor } from '../lib/colors';
-import { SLAB, SLAB_HEIGHT } from './board/layout';
-import Spaces, { Center, LandingGlow } from './board/Spaces';
+import Icon from './ui/Icon';
+import Room from './board/Room';
+import Spaces, { ART_COUNT, Center, LandingGlow } from './board/Spaces';
 import Tokens from './board/Tokens';
 import Dice from './board/Dice';
 import CameraRig from './board/CameraRig';
@@ -21,58 +22,15 @@ import ErrorBoundary from './board/ErrorBoundary';
 import { startDirector } from './board/director';
 import css from './board/board.module.css';
 
-const BACKGROUND = '#14201a';
-
 function onCreated({ gl, invalidate }) {
   gl.toneMapping = THREE.NeutralToneMapping; // ACES greys out the cream tiles
   // frameloop="demand": nothing would redraw when a lost context comes back (iOS drops it in the background).
   gl.domElement.addEventListener('webglcontextrestored', () => invalidate());
 }
 
-function Lights() {
-  return (
-    <>
-      <hemisphereLight args={['#fff6e8', '#33443a', 1.15]} />
-      <directionalLight
-        position={[14, 30, 18]}
-        intensity={2.3}
-        castShadow
-        shadow-mapSize={[2048, 2048]}
-        shadow-bias={-0.0004}
-        shadow-normalBias={0.02}
-        shadow-camera-left={-20}
-        shadow-camera-right={20}
-        shadow-camera-top={20}
-        shadow-camera-bottom={-20}
-        shadow-camera-near={1}
-        shadow-camera-far={80}
-      />
-    </>
-  );
-}
-
-function Table() {
-  return (
-    <>
-      <mesh rotation-x={-Math.PI / 2} position-y={-SLAB_HEIGHT - 0.02} receiveShadow>
-        <planeGeometry args={[160, 160]} />
-        <meshStandardMaterial color="#2b1d14" roughness={0.85} />
-      </mesh>
-      <mesh position-y={-SLAB_HEIGHT / 2} receiveShadow castShadow>
-        <boxGeometry args={[SLAB, SLAB_HEIGHT, SLAB]} />
-        <meshStandardMaterial color="#efe6d2" roughness={0.9} />
-      </mesh>
-    </>
-  );
-}
-
 function Landing() {
   const landing = useBoardAnim(s => s.landing);
-  const color = useGameStore(s => {
-    const player = landing ? s.players.find(p => p.id === landing.playerId) : null;
-    return player ? playerColor(player) : null;
-  });
-  return <LandingGlow landing={landing} color={color} />;
+  return <LandingGlow landing={landing} />;
 }
 
 function Director() {
@@ -81,31 +39,44 @@ function Director() {
   return null;
 }
 
+const PILL_AFTER_MS = 600; // a warm cache draws the board sooner than this: no pill at all
+
+// "Loading the board" while its art (the centre and the tiles) is still missing, and only once that has taken
+// a moment. It counts the art itself, not drei's useProgress: that also waits on the token models, which
+// already stand in as plain pawns, so it kept the pill over a board that was visibly drawn.
 function LoadingOverlay() {
-  const { active, progress } = useProgress();
-  const done = !active || progress >= 100;
+  const drawn = useBoardAnim(s => s.artDrawn);
+  const done = useBoardAnim(s => s.artReady);
+  const [late, setLate] = useState(false);
+  useEffect(() => {
+    const timer = setTimeout(() => setLate(true), PILL_AFTER_MS);
+    return () => clearTimeout(timer);
+  }, []);
+  const hidden = done || !late;
   return (
-    <div className={css.progress} data-done={done} role="status" aria-live="polite" aria-hidden={done}>
-      <span>{done ? 'Board ready' : 'Loading board'}</span>
-      <span className={css.bar}><i style={{ width: `${Math.round(progress)}%` }} /></span>
+    <div className={css.progress} data-done={done} data-hidden={hidden} role="status" aria-live="polite" aria-hidden={hidden}>
+      <span>{done ? 'Board ready' : 'Loading the board'}</span>
+      <span className={css.bar}><i style={{ width: `${Math.round((100 * Math.min(drawn, ART_COUNT)) / ART_COUNT)}%` }} /></span>
     </div>
   );
 }
 
+// Top right, clear of New Year's Eve and the tokens on it: "Show the whole board" and the Follow toggle,
+// which names the player while the camera is tracking them.
 function ViewControls() {
   const follow = useBoardAnim(s => s.follow);
   const setFollow = useBoardAnim(s => s.setFollow);
   const recenter = useBoardAnim(s => s.recenter);
+  const tracking = useBoardAnim(s => s.tracking);
+  const name = useGameStore(s => (tracking == null ? null : s.players?.find(p => p.id === tracking)?.username ?? null));
   return (
     <div className={css.controls}>
-      <button type="button" onClick={recenter} title="Show the whole board" aria-label="Show the whole board">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
-          <path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5" />
-        </svg>
+      <button type="button" className={css.round} onClick={recenter} title="Show the whole board" aria-label="Show the whole board">
+        <Icon name="fullscreen" size={20} />
       </button>
-      <button type="button" aria-pressed={follow} onClick={() => setFollow(!follow)} title="Camera follows moving tokens">
-        <span className={css.dot} />
-        Follow
+      <button type="button" className={css.follow} aria-pressed={follow} onClick={() => setFollow(!follow)} title="Camera follows moving tokens">
+        <span className={css.lamp} aria-hidden="true" />
+        {follow && name ? <span>Following {name}</span> : <span>Follow</span>}
       </button>
     </div>
   );
@@ -114,9 +85,7 @@ function ViewControls() {
 function Scene() {
   return (
     <>
-      <color attach="background" args={[BACKGROUND]} />
-      <Lights />
-      <Table />
+      <Room />
       <Center />
       <Spaces />
       <Tokens />

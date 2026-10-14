@@ -5,7 +5,7 @@ import { money } from '../../lib/format';
 export const STATUS_LABELS = {
   pending: 'Pending',
   accepted: 'Accepted',
-  rejected: 'Rejected',
+  rejected: 'Declined',
   cancelled: 'Cancelled',
   countered: 'Countered',
   expired: 'Expired'
@@ -66,10 +66,42 @@ export function untradableReason(property, properties) {
   if (property.property_type === 'property') {
     const group = properties.filter(p => p.property_type === 'property' && p.color_group === property.color_group);
     if (group.some(p => p.house_count > 0)) {
-      return property.house_count > 0 ? 'Has buildings' : `Buildings on the ${GROUP_LABELS[property.color_group] || property.color_group} set`;
+      return property.house_count > 0 ? 'Has buildings' : `Buildings on the ${(GROUP_LABELS[property.color_group] || property.color_group).toLowerCase()} set`;
     }
   }
   return null;
+}
+
+// "Red", "Light blue", "Subway station", "Utility": the line under a property's name on a deed chip.
+export function groupName(property) {
+  if (!property) return '';
+  if (property.property_type === 'railroad') return 'Subway station';
+  if (property.property_type === 'utility') return 'Utility';
+  return GROUP_LABELS[property.color_group] || property.color_group || '';
+}
+
+/**
+ * The colour sets I would complete by this trade (group keys), counting what I give away: sets I already
+ * own in full are not news. Stations and utilities are not "sets" here.
+ */
+export function completedSets(give, get, { properties, myPlayerId }) {
+  if (myPlayerId == null || !get.properties.length) return [];
+  const after = new Set(properties.filter(p => p.owner_id === myPlayerId).map(p => p.id));
+  for (const id of give.properties) after.delete(id);
+  for (const id of get.properties) after.add(id);
+  const groups = new Set();
+  for (const id of get.properties) {
+    const property = properties.find(p => p.id === id);
+    if (property?.property_type === 'property') groups.add(property.color_group);
+  }
+  const done = [];
+  for (const group of groups) {
+    const members = properties.filter(p => p.property_type === 'property' && p.color_group === group);
+    if (!members.length) continue;
+    const before = members.every(p => p.owner_id === myPlayerId);
+    if (!before && members.every(p => after.has(p.id))) done.push(group);
+  }
+  return done;
 }
 
 export function jailCardText(count) {

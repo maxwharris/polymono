@@ -17,6 +17,11 @@ import AwayDigest from './game/AwayDigest';
 import GameOver from './game/GameOver';
 import BoardBoundary from './game/BoardBoundary';
 import './game/game.css';
+import './game/panel.css';
+import './game/players.css';
+import './game/feed.css';
+import './game/deed.css';
+import './game/sheets.css';
 
 // three.js only loads once someone reaches the game screen. lazy() keeps a failed import failed for good, so
 // retrying (BoardBoundary's "Try again") swaps in a fresh lazy component.
@@ -31,14 +36,16 @@ function selectChatUnread(s) {
 }
 
 /**
- * The game screen (also read-only for spectators).
- * Desktop: players | board + action panel | activity/chat. Phone: top bar, board, action panel, tab bar,
- * with Players / Activity / Chat / Mine as sheets over the board (which stays mounted underneath).
+ * The game screen (also read-only for spectators), Midnight Deco.
+ * Phone (to 899px): top bar, board, docked turn panel, tab bar, with Players / Activity / Chat / Mine as sheets
+ * over the board (which stays mounted underneath). 900px: board | activity and chat, the players open from the
+ * dial. 1100px: players and your holdings | board and the floating panel | activity and chat.
  */
 export default function Game() {
   useTurnSignals();
-  const { sheet, sideTab, status, isSpectator, tradeOpen, tradeOptions, closeTrade, markChatRead, resultsHidden, hideResults } = useGameStore(useShallow(s => ({
+  const { sheet, sideTab, status, isSpectator, tradeOpen, tradeOptions, closeTrade, markChatRead, resultsHidden, hideResults, closeSheet } = useGameStore(useShallow(s => ({
     sheet: s.sheet,
+    closeSheet: s.closeSheet,
     sideTab: s.sideTab,
     status: s.game?.status,
     isSpectator: s.isSpectator,
@@ -62,6 +69,16 @@ export default function Game() {
     if (chatVisible && chatUnread > 0) markChatRead();
   }, [chatVisible, chatUnread, markChatRead]);
 
+  // Esc closes a sheet or drawer (Players, Activity, Mine) unless a dialog is open on top of it.
+  useEffect(() => {
+    if (!sheet) return undefined;
+    const onKey = (event) => {
+      if (event.key === 'Escape' && !document.querySelector('dialog[open]')) closeSheet();
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [sheet, closeSheet]);
+
   return (
     <div className="game" data-sheet={sheet || 'board'}>
       <TopBar />
@@ -73,7 +90,7 @@ export default function Game() {
       <main className="stage">
         <div className="board-area">
           <BoardBoundary onRetry={retryBoard}>
-            <Suspense fallback={<div className="board-loading" role="status">Loading the board…</div>}>
+            <Suspense fallback={<div className="board-loading" role="status"><span className="ui-spinner" aria-hidden="true" />Loading the board…</div>}>
               <Board />
             </Suspense>
           </BoardBoundary>

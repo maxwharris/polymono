@@ -42,22 +42,50 @@ function faceQuaternion(value, yaw, out) {
   return out.premultiply(_yaw.setFromAxisAngle(UP, yaw));
 }
 
-function pipTexture(value) {
+// All six faces in one texture, a 4 x 2 grid of 128px cells (face f in cell f), so each die is one draw call.
+// The cells' edges are all plain paper, so mipmaps bleeding across them can't show.
+const CELL_PX = 128;
+const ATLAS_COLS = 4;
+const ATLAS_ROWS = 2;
+
+function pipAtlas() {
   const canvas = document.createElement('canvas');
-  canvas.width = canvas.height = 128;
+  canvas.width = CELL_PX * ATLAS_COLS;
+  canvas.height = CELL_PX * ATLAS_ROWS;
   const g = canvas.getContext('2d');
-  g.fillStyle = '#f6f1e4';
-  g.fillRect(0, 0, 128, 128);
-  g.fillStyle = value === 1 ? '#c8262b' : '#1b1b1b';
-  for (const [u, v] of PIPS[value]) {
-    g.beginPath();
-    g.arc(u * 128, v * 128, value === 1 ? 17 : 11.5, 0, Math.PI * 2);
-    g.fill();
-  }
+  g.fillStyle = '#F5ECDA'; // --paper, like the dice in the turn panel
+  g.fillRect(0, 0, canvas.width, canvas.height);
+  g.fillStyle = '#14203A'; // --pip
+  FACE_VALUES.forEach((value, f) => {
+    const x0 = (f % ATLAS_COLS) * CELL_PX;
+    const y0 = Math.floor(f / ATLAS_COLS) * CELL_PX;
+    for (const [u, v] of PIPS[value]) {
+      g.beginPath();
+      g.arc(x0 + u * CELL_PX, y0 + v * CELL_PX, value === 1 ? 17 : 11.5, 0, Math.PI * 2);
+      g.fill();
+    }
+  });
   const texture = new THREE.CanvasTexture(canvas);
   texture.colorSpace = THREE.SRGBColorSpace;
   texture.anisotropy = 4;
   return texture;
+}
+
+/** A rounded die whose faces sample their own atlas cell (RoundedBoxGeometry is non-indexed, a sixth per face). */
+function dieGeometry() {
+  const geometry = new RoundedBoxGeometry(SIZE, SIZE, SIZE, 4, 0.12);
+  const uv = geometry.attributes.uv;
+  const perFace = uv.count / 6;
+  for (let i = 0; i < uv.count; i++) {
+    const f = Math.floor(i / perFace);
+    const col = f % ATLAS_COLS;
+    const row = Math.floor(f / ATLAS_COLS);
+    // Canvas rows run down, texture v runs up (flipY): row 0 is the top band of the texture.
+    uv.setXY(i, (col + uv.getX(i)) / ATLAS_COLS, (ATLAS_ROWS - 1 - row + uv.getY(i)) / ATLAS_ROWS);
+  }
+  uv.needsUpdate = true;
+  geometry.clearGroups();
+  return geometry;
 }
 
 function Dice() {
@@ -66,18 +94,13 @@ function Dice() {
   const right = useRef();
   const anim = useRef(null);
   const invalidate = useThree(s => s.invalidate);
-  const geometry = useMemo(() => new RoundedBoxGeometry(SIZE, SIZE, SIZE, 4, 0.12), []);
-  const materials = useMemo(
-    () => FACE_VALUES.map(v => new THREE.MeshStandardMaterial({ map: pipTexture(v), roughness: 0.45 })),
-    []
-  );
+  const geometry = useMemo(() => dieGeometry(), []);
+  const material = useMemo(() => new THREE.MeshStandardMaterial({ map: pipAtlas(), roughness: 0.45 }), []);
   useEffect(() => () => {
     geometry.dispose();
-    materials.forEach(m => {
-      m.map.dispose();
-      m.dispose();
-    });
-  }, [geometry, materials]);
+    material.map.dispose();
+    material.dispose();
+  }, [geometry, material]);
 
   const die1 = dice?.die1;
   const die2 = dice?.die2;
@@ -159,8 +182,8 @@ function Dice() {
 
   return (
     <>
-      <mesh ref={left} geometry={geometry} material={materials} castShadow visible={visible} />
-      <mesh ref={right} geometry={geometry} material={materials} castShadow visible={visible} />
+      <mesh ref={left} geometry={geometry} material={material} castShadow visible={visible} />
+      <mesh ref={right} geometry={geometry} material={material} castShadow visible={visible} />
     </>
   );
 }

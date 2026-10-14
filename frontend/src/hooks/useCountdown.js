@@ -2,11 +2,12 @@ import useGameStore from '../store/gameStore';
 import { timeLeft } from '../lib/format';
 import useNow from './useNow';
 
-const HOUR = 3600 * 1000;
+const MINUTE = 60 * 1000;
 
 /**
  * Time left until `deadline` on the server's clock: { label: '19h 12m' | 'overdue' | null, ms, tone }.
- * tone is 'ok', 'warn' (under 4 hours) or 'danger' (under 1 hour). No deadline (turn_hours 0) = label null.
+ * tone is 'ok' (slate), 'soon' (brass, under 3 hours) or 'urgent' (stop-red, under 30 minutes): urgency
+ * without a new accent, and it never blinks. No deadline (turn_hours 0) = label null.
  */
 export default function useCountdown(deadline) {
   const now = useNow(30000);
@@ -14,6 +15,6 @@ export default function useCountdown(deadline) {
   if (!deadline) return { label: null, ms: null, tone: 'ok' };
   const serverNow = now + offset;
   const ms = new Date(deadline).getTime() - serverNow;
-  const tone = ms < HOUR ? 'danger' : ms < 4 * HOUR ? 'warn' : 'ok';
+  const tone = ms < 30 * MINUTE ? 'urgent' : ms < 180 * MINUTE ? 'soon' : 'ok';
   return { label: timeLeft(deadline, serverNow), ms, tone };
 }

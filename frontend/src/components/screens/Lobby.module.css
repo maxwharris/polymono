@@ -1,232 +1,323 @@
+/* Lobby: straight on the room, no card. Wordmark header, title and status, the settings plaque, flush
+   player rows, past games, and a docked lacquer footer with the ready switch and Start. */
+
 .page {
   display: flex;
-  justify-content: center;
-  align-items: flex-start;
+  flex-direction: column;
   min-height: 100vh;
   min-height: 100dvh;
-  padding: max(16px, env(safe-area-inset-top)) 16px max(24px, env(safe-area-inset-bottom));
-}
-
-@media (min-width: 640px) {
-  .page {
-    padding-top: 48px;
-  }
-}
-
-.card {
-  width: 100%;
-  max-width: 560px;
-  padding: 20px 16px;
-  display: grid;
-  gap: 20px;
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.35);
-}
-
-@media (min-width: 480px) {
-  .card {
-    padding: 24px;
-  }
+  background: var(--room);
 }
 
 .header {
+  flex: none;
   display: flex;
   align-items: center;
-  gap: 12px;
+  justify-content: space-between;
+  gap: var(--space-3);
+  width: 100%;
+  max-width: 1040px;
+  margin: 0 auto;
+  min-height: 52px;
+  padding: var(--safe-top) 8px 0 var(--gutter-wide);
 }
 
-.logo {
-  flex: none;
-  width: 64px;
-  height: auto;
-}
-
-.heading {
-  flex: 1;
-  min-width: 0;
-}
-
-.title {
-  color: var(--pm-gold);
-  font-size: 1.5rem;
-  font-weight: 800;
-}
-
-.subtitle {
-  color: var(--pm-muted);
-  font-size: 0.85rem;
-}
-
-.settings {
-  display: flex;
-  flex-wrap: wrap;
+.header :global(.ui-btn--ghost) {
   gap: 6px;
 }
 
-.settings li {
-  padding: 4px 10px;
-  border: 1px solid var(--pm-border);
-  border-radius: 999px;
-  background: rgba(0, 0, 0, 0.18);
-  color: var(--pm-text-2);
-  font-size: 0.85rem;
-}
-
-.section {
+/* Phone: one column (main, past games, footer). The footer sits at the bottom of the screen even when
+   there is little above it, and stays docked while the list scrolls. */
+.layout {
+  flex: 1 0 auto;
   display: grid;
-  gap: 10px;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto auto 1fr;
+  grid-template-areas: 'main' 'past' 'foot';
+  width: 100%;
+  max-width: 1040px;
+  margin: 0 auto;
 }
 
-.sectionTitle {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 8px;
-  color: var(--pm-text);
-  font-size: 1.1rem;
-  font-weight: 700;
+.main {
+  grid-area: main;
+  min-width: 0;
+  padding: 6px var(--gutter-wide) 0;
 }
 
-.count {
-  color: var(--pm-muted);
-  font-size: 0.85rem;
-  font-weight: 600;
+.past {
+  grid-area: past;
+  min-width: 0;
+  padding: 0 var(--gutter-wide);
 }
 
-.players {
-  display: grid;
-  gap: 8px;
-}
-
-.player {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
-  grid-template-areas:
-    'token info ready'
-    'token info remove'
-    'confirm confirm confirm';
-  align-items: center;
-  column-gap: 12px;
-  row-gap: 4px;
-  padding: 10px 12px;
-  border: 1px solid var(--pm-border);
-  border-left: 4px solid var(--player, var(--pm-border));
-  border-radius: var(--pm-radius);
-  background: rgba(0, 0, 0, 0.16);
-}
-
-.playerMe {
-  background: rgba(212, 175, 55, 0.07);
-}
-
-.token {
-  grid-area: token;
-  display: grid;
-  place-items: center;
-  width: 44px;
-  height: 44px;
-  border: 2px solid var(--player, var(--pm-border));
-  border-radius: 50%;
-  background: rgba(0, 0, 0, 0.25);
-  font-size: 1.4rem;
+.title {
   line-height: 1;
 }
 
-.playerInfo {
-  grid-area: info;
+.status {
+  margin-top: 8px;
+  font: 400 16px / 1.25 var(--font-text);
+  color: var(--limestone);
+}
+
+.viewer {
+  margin-top: 4px;
+  font: 400 14px / 1.4 var(--font-text);
+  color: var(--slate);
+}
+
+/* ---- settings plaque: square corners, a brass double frame, diamond terminals ------------------------ */
+
+.plaque {
+  position: relative;
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
+  margin: 16px 3px 0;
+  padding: 12px 4px;
+  border-radius: var(--r-plaque);
+  background: var(--lacquer);
+  box-shadow: inset 0 0 0 1px var(--brass-600), inset 0 0 0 4px var(--lacquer), inset 0 0 0 5px var(--brass-800);
+}
+
+.plaque::before,
+.plaque::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  width: 7px;
+  height: 7px;
+  margin-top: -3.5px;
+  background: var(--brass-400);
+  transform: rotate(45deg);
+}
+
+.plaque::before { left: -3.5px; }
+.plaque::after { right: -3.5px; }
+
+.plaqueCell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 0;
+  padding: 0 4px;
+  text-align: center;
+}
+
+.plaqueCell + .plaqueCell {
+  border-left: 1px solid var(--seam);
+}
+
+/* Antonio numerals: acceptable here because each value is single and static (must-fix #2). */
+.plaqueValue {
+  font: 600 var(--fs-plaque) / 1 var(--font-display);
+  letter-spacing: 0.01em;
+  color: var(--brass-300);
+  white-space: nowrap;
+}
+
+.plaqueLabel {
+  margin-top: 5px;
+  font: 500 var(--fs-meta) / 1 var(--font-text);
+  color: var(--slate);
+}
+
+.notice {
+  margin-top: 16px;
+}
+
+/* ---- players --------------------------------------------------------------------------------------- */
+
+.players {
+  margin-top: 20px;
+}
+
+.paneTitle {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: var(--space-2);
+  padding-bottom: 4px;
+  font: 600 22px / 1 var(--font-display);
+  letter-spacing: 0.01em;
+}
+
+.count {
+  font: 500 14px / 1 var(--font-text);
+  font-variant-numeric: tabular-nums lining-nums;
+  color: var(--slate);
+}
+
+.nobody {
+  padding: 16px 0;
+  color: var(--slate);
+}
+
+.list {
+  border-top: 1px solid var(--seam);
+}
+
+.row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  align-items: center;
+  column-gap: var(--space-3);
+  min-height: 58px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--seam);
+}
+
+.who {
   min-width: 0;
 }
 
-.playerName {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 4px 8px;
-  font-weight: 700;
-}
-
 .name {
-  overflow-wrap: anywhere;
-}
-
-.you {
-  color: var(--pm-muted);
-  font-weight: 500;
-  font-size: 0.9rem;
-}
-
-.playerMeta {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 4px 6px;
-  color: var(--pm-muted);
-  font-size: 0.85rem;
+  font: 600 16px / 1.2 var(--font-text);
+  color: var(--marble);
 }
 
-.dot {
-  display: inline-block;
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: #6B8A7B;
+.nameText {
+  overflow-wrap: anywhere;
 }
 
-.dotOnline {
-  background: #4ADE80;
-  box-shadow: 0 0 0 2px rgba(74, 222, 128, 0.25);
+.host {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font: 500 12px / 1 var(--font-text);
+  color: var(--brass-300);
+}
+
+.sub {
+  margin-top: 3px;
+  font: 400 var(--fs-meta) / 1.2 var(--font-text);
+  color: var(--slate);
 }
 
 .ready {
-  grid-area: ready;
-  justify-self: end;
-  color: var(--pm-muted);
-  font-size: 0.85rem;
-  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font: 500 14px / 1 var(--font-text);
+  color: var(--slate);
   white-space: nowrap;
 }
 
 .readyYes {
-  color: var(--pm-success);
+  font-weight: 600;
+  color: var(--go);
 }
 
 .remove {
-  grid-area: remove;
-  justify-self: end;
+  margin-right: -10px;
+  color: var(--slate);
 }
 
-.confirmRow {
-  grid-area: confirm;
-  margin-top: 6px;
+.removeSpace {
+  width: calc(var(--hit) - 10px);
 }
 
-.actions {
-  display: grid;
-  gap: 12px;
+/* ---- footer: a docked lacquer panel (ui-panel) ----------------------------------------------------- */
+
+.footer {
+  grid-area: foot;
+  align-self: end;
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+  margin-top: 24px;
+  padding: 8px var(--gutter-wide) calc(14px + var(--safe-bottom));
 }
 
-.startBlock {
-  display: grid;
-  gap: 6px;
+.switchRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  min-height: 52px;
+}
+
+.switchLabel {
+  font: 600 16px / 1.2 var(--font-text);
+  color: var(--marble);
+}
+
+.footer :global(.ui-btn--lg) {
+  margin-top: 4px;
 }
 
 .waiting {
-  padding: 10px 12px;
-  border-radius: var(--pm-radius);
-  background: rgba(0, 0, 0, 0.18);
-  color: var(--pm-text-2);
-  text-align: center;
+  margin-top: 4px;
 }
 
 .waiting strong {
-  color: var(--pm-gold-soft);
+  font-weight: 600;
+  color: var(--marble);
 }
 
-.waitingDetail {
-  display: block;
-  color: var(--pm-muted);
-  font-size: 0.85rem;
+.footRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-top: 4px;
+  min-height: var(--hit);
+}
+
+.hint {
+  min-width: 0;
+}
+
+.footRow:has(.hint:empty) {
+  justify-content: flex-end;
 }
 
 .leave {
-  justify-self: center;
+  flex: none;
+  margin-right: -10px;
+  color: var(--slate);
+}
+
+/* ---- desktop: the lobby on the left, past games on the right --------------------------------------- */
+
+@media (min-width: 900px) {
+  .header {
+    max-width: calc(560px + 56px + 340px + 2 * 32px); /* the two columns below, so the edges line up */
+    min-height: 64px;
+    padding: 0 20px 0 32px;
+  }
+
+  .layout {
+    flex: none;
+    grid-template-columns: minmax(0, 560px) minmax(0, 340px);
+    grid-template-rows: auto auto;
+    grid-template-areas: 'main past' 'foot past';
+    justify-content: center;
+    column-gap: 56px;
+    padding: 24px 32px 48px;
+  }
+
+  .main,
+  .past {
+    padding: 0;
+  }
+
+  .layout .past {
+    align-self: start;
+    margin-top: 10px;
+  }
+
+  .footer {
+    position: relative; /* not sticky; still the containing block for the panel's brass inlay */
+    align-self: start;
+    margin-top: 28px;
+    padding: 10px 20px 14px;
+    border-radius: var(--r-dialog);
+    box-shadow: var(--shadow-lifted);
+  }
 }

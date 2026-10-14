@@ -1,10 +1,14 @@
 import { useEffect, useRef, useState } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import useGameStore from '../store/gameStore';
-import { tokenEmoji, tokenLabel } from '../lib/tokens';
-import { playerColor } from '../lib/colors';
+import { tokenLabel } from '../lib/tokens';
 import { money } from '../lib/format';
-import ConfirmStep from './screens/ConfirmStep';
+import { api } from '../lib/api';
+import Icon from './ui/Icon';
+import Medallion from './ui/Medallion';
+import Wordmark from './ui/Wordmark';
+import ConfirmDialog from './screens/ConfirmDialog';
+import PastGames from './screens/PastGames';
 import ui from './screens/ui.module.css';
 import s from './screens/Lobby.module.css';
 
@@ -21,11 +25,15 @@ function leftThisLobby(events, userId) {
   return events.some(e => (e.type === 'leave' || e.type === 'removed') && (e.user_id === userId || e.data?.removedUserId === userId));
 }
 
-function turnTimerText(settings) {
+// The settings plaque: three static values ("24h per turn", "$1,500 to start", "2–6 players").
+function plaqueCells(settings) {
+  const cells = [];
   const hours = Number(settings?.turn_hours);
-  if (!Number.isFinite(hours)) return null;
-  if (hours === 0) return 'No turn timer';
-  return `${hours} hour${hours === 1 ? '' : 's'} per turn`;
+  if (Number.isFinite(hours)) cells.push(hours === 0 ? { value: 'Off', label: 'turn timer' } : { value: `${hours}h`, label: 'per turn' });
+  const cash = Number(settings?.starting_money);
+  if (Number.isFinite(cash) && cash > 0) cells.push({ value: money(cash), label: 'to start' });
+  cells.push({ value: `2–${MAX_PLAYERS}`, label: 'players' });
+  return cells;
 }
 
 export default function Lobby() {
@@ -43,6 +51,7 @@ export default function Lobby() {
 
   const [pending, setPending] = useState(null); // 'join' | 'ready' | 'start' | 'leave' | 'remove'
   const [confirmRemoveId, setConfirmRemoveId] = useState(null);
+  const [history, setHistory] = useState(null); // finished games, newest first
   const autoJoinTried = useRef(false);
 
   const seated = [...(players || [])].sort((a, b) => a.turn_order - b.turn_order);
@@ -78,6 +87,15 @@ export default function Lobby() {
     import('./board/assets').then(m => m.preloadBoard(tokenTypes.split(','))).catch(() => {});
   }, [tokenTypes]);
 
+  // Past games, for the record. Read once per visit; nothing here depends on it.
+  useEffect(() => {
+    let live = true;
+    api('/game/history')
+      .then(data => { if (live) setHistory(Array.isArray(data) ? data : []); })
+      .catch(() => { if (live) setHistory([]); });
+    return () => { live = false; };
+  }, []);
+
   async function run(kind, route, body) {
     if (pending) return;
     setPending(kind);
@@ -98,9 +116,11 @@ export default function Lobby() {
 
   const count = seated.length;
   const notReady = seated.filter(p => !p.ready_to_start);
+  const readyCount = count - notReady.length;
   const allReady = count > 0 && notReady.length === 0;
   const canStart = iAmHost && count >= 2 && count <= MAX_PLAYERS && allReady;
   const full = count >= MAX_PLAYERS;
+  const hostName = host ? (host.id === me?.id ? 'you' : host.username) : 'the host';
 
   let startHint = null;
   if (count < 2) {
@@ -110,164 +130,197 @@ export default function Lobby() {
     startHint = `Waiting for ${listNames(names)} to be ready.`;
   }
 
-  const timer = turnTimerText(game?.settings);
-  const startingCash = Number(game?.settings?.starting_money);
+  let readyLine = 'Nobody has joined yet';
+  if (count > 0) {
+    readyLine = allReady
+      ? (count === 1 ? 'The one player here is ready' : `All ${count} players are ready`)
+      : `${readyCount} of ${count} player${count === 1 ? '' : 's'} ${readyCount === 1 ? 'is' : 'are'} ready`;
+  }
+
+  // The line that speaks to whoever is looking.
+  let viewerLine;
+  if (watching) viewerLine = `You're watching as a spectator. The game appears here once ${host ? host.username : 'the host'} starts it.`;
+  else if (iAmHost) viewerLine = "You're the host. Start the game once everyone at the table is ready.";
+  else if (inLobby) viewerLine = `${host.username} is the host and starts the game once everyone is ready.`;
+  else if (pending === 'join') viewerLine = 'Taking a seat…';
+  else if (full) viewerLine = 'The table is full.';
+  else viewerLine = "You don't have a seat in this game yet.";
+
+  const removing = seated.find(p => p.id === confirmRemoveId) || null;
 
   return (
     <main className={`${ui.theme} ${s.page}`}>
-      <div className={`${ui.panel} ${s.card}`}>
-        <header className={s.header}>
-          <img className={s.logo} src="/polymono-logo.webp" alt="" width="96" height="52" decoding="async" />
-          <div className={s.heading}>
-            <h1 className={s.title}>Game lobby</h1>
-            <p className={s.subtitle}>Polymono · Manhattan Edition</p>
-          </div>
-          <button type="button" className={`${ui.btn} ${ui.ghost} ${ui.small}`} onClick={() => logout()}>
-            Log out
-          </button>
-        </header>
+      <header className={s.header}>
+        <Wordmark size="sm" />
+        <button type="button" className="ui-btn ui-btn--ghost" onClick={() => logout()}>
+          <Icon name="logout" size={18} />
+          Log out
+        </button>
+      </header>
 
-        <ul className={s.settings} aria-label="Game settings">
-          {timer && <li>{timer}</li>}
-          {Number.isFinite(startingCash) && startingCash > 0 && <li>{money(startingCash)} starting cash</li>}
-          <li>2–{MAX_PLAYERS} players</li>
-        </ul>
+      <div className={s.layout}>
+        <div className={s.main}>
+          <section aria-labelledby="lobby-title">
+            <h1 id="lobby-title" className={`ui-display-l ${s.title}`}>Game lobby</h1>
+            <p className={s.status}>{readyLine}</p>
+            <p className={s.viewer}>{viewerLine}</p>
+          </section>
 
-        {status && status !== 'lobby' && (
-          <p className={ui.notice}>
-            {status === 'in_progress' ? 'The game has already started.' : 'The last game is over.'}
-          </p>
-        )}
+          <dl className={s.plaque} aria-label="Game settings">
+            {plaqueCells(game?.settings).map(cell => (
+              <div key={cell.label} className={s.plaqueCell}>
+                <dt className={s.plaqueValue}>{cell.value}</dt>
+                <dd className={s.plaqueLabel}>{cell.label}</dd>
+              </div>
+            ))}
+          </dl>
 
-        <section className={s.section} aria-labelledby="lobby-players">
-          <h2 id="lobby-players" className={s.sectionTitle}>
-            Players <span className={s.count}>{count} of {MAX_PLAYERS}</span>
-          </h2>
-
-          {count === 0 ? (
-            <p className={ui.hint}>Nobody has joined yet.</p>
-          ) : (
-            <ul className={s.players}>
-              {seated.map(player => {
-                const isMe = player.id === me?.id;
-                const isHost = player.id === host?.id;
-                const isOnline = online.has(player.user_id);
-                const color = playerColor(player);
-                return (
-                  <li key={player.id} className={`${s.player} ${isMe ? s.playerMe : ''}`} style={{ '--player': color }}>
-                    <span className={s.token} aria-hidden="true">{tokenEmoji(player.token_type)}</span>
-                    <div className={s.playerInfo}>
-                      <p className={s.playerName}>
-                        <span className={s.name}>{player.username}</span>
-                        {isMe && <span className={s.you}>(you)</span>}
-                        {isHost && <span className={`${ui.badge} ${ui.badgeGold}`}>Host</span>}
-                      </p>
-                      <p className={s.playerMeta}>
-                        <span className={`${s.dot} ${isOnline ? s.dotOnline : ''}`} aria-hidden="true" />
-                        <span>{isOnline ? 'Online' : 'Offline'}</span>
-                        <span aria-hidden="true">·</span>
-                        <span>{tokenLabel(player.token_type)}</span>
-                      </p>
-                    </div>
-                    <span className={`${s.ready} ${player.ready_to_start ? s.readyYes : ''}`}>
-                      {player.ready_to_start ? '✓ Ready' : 'Not ready'}
-                    </span>
-                    {iAmHost && !isMe && confirmRemoveId !== player.id && (
-                      <button
-                        type="button"
-                        className={`${ui.btn} ${ui.dangerOutline} ${ui.small} ${s.remove}`}
-                        onClick={() => setConfirmRemoveId(player.id)}
-                        disabled={!!pending}
-                        aria-label={`Remove ${player.username}`}
-                      >
-                        Remove
-                      </button>
-                    )}
-                    {confirmRemoveId === player.id && (
-                      <div className={s.confirmRow}>
-                        <ConfirmStep
-                          message={`Remove ${player.username} from the lobby?`}
-                          detail="They can join again from their own screen."
-                          confirmLabel="Remove"
-                          busy={pending === 'remove'}
-                          busyLabel="Removing…"
-                          onConfirm={() => removePlayer(player.id)}
-                          onCancel={() => setConfirmRemoveId(null)}
-                        />
-                      </div>
-                    )}
-                  </li>
-                );
-              })}
-            </ul>
+          {status && status !== 'lobby' && (
+            <p className={`${ui.notice} ${s.notice}`}>
+              <Icon name="info" size={18} />
+              {status === 'in_progress' ? 'The game has already started.' : 'The last game is over.'}
+            </p>
           )}
-        </section>
 
-        <section className={s.actions} aria-label="Your options">
-          {watching ? (
-            <p className={ui.notice}>You are watching as a spectator. The game appears here once the host starts it.</p>
-          ) : inLobby ? (
-            <>
-              <button
-                type="button"
-                className={`${ui.btn} ${me.ready_to_start ? ui.outline : ui.primary} ${ui.block}`}
-                aria-pressed={!!me.ready_to_start}
-                onClick={() => run('ready', 'ready')}
-                disabled={!!pending || status !== 'lobby'}
-              >
-                {pending === 'ready' ? 'Saving…' : me.ready_to_start ? "✓ I'm ready (tap to undo)" : "I'm ready"}
-              </button>
+          <section className={s.players} aria-labelledby="lobby-players">
+            <h2 id="lobby-players" className={s.paneTitle}>
+              Players <span className={s.count}>{count} of {MAX_PLAYERS}</span>
+            </h2>
 
-              {iAmHost ? (
-                <div className={s.startBlock}>
+            {count === 0 ? (
+              <p className={s.nobody}>Nobody has joined yet.</p>
+            ) : (
+              <ul className={s.list}>
+                {seated.map(player => {
+                  const isMe = player.id === me?.id;
+                  const isHost = player.id === host?.id;
+                  const isOnline = online.has(player.user_id);
+                  return (
+                    <li key={player.id} className={s.row}>
+                      <Medallion player={player} size={42} online={isOnline} />
+                      <div className={s.who}>
+                        <p className={s.name}>
+                          <span className={s.nameText}>{player.username}</span>
+                          {isMe && <span className="ui-tag">you</span>}
+                          {isHost && (
+                            <span className={s.host}>
+                              <Icon name="crown" size={14} />
+                              Host
+                            </span>
+                          )}
+                        </p>
+                        <p className={s.sub}>
+                          {tokenLabel(player.token_type)}, {isOnline ? 'online' : 'offline'}
+                        </p>
+                      </div>
+                      {player.ready_to_start ? (
+                        <span className={`${s.ready} ${s.readyYes}`}>
+                          <Icon name="check" size={16} strokeWidth={2.25} />
+                          Ready
+                        </span>
+                      ) : (
+                        <span className={s.ready}>Not ready</span>
+                      )}
+                      {iAmHost && isMe && <span className={s.removeSpace} aria-hidden="true" />}
+                      {iAmHost && !isMe && (
+                        <button
+                          type="button"
+                          className={`ui-btn ui-btn--ghost ui-btn--icon ${s.remove}`}
+                          onClick={() => setConfirmRemoveId(player.id)}
+                          disabled={!!pending}
+                          aria-label={`Remove ${player.username}`}
+                          title={`Remove ${player.username}`}
+                        >
+                          <Icon name="close" size={18} />
+                        </button>
+                      )}
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </section>
+        </div>
+
+        <PastGames games={history} players={seated} myUserId={user?.id} className={s.past} />
+
+        {!watching && (
+          <footer className={`ui-panel ${s.footer}`} aria-label="Your options">
+            {inLobby ? (
+              <>
+                <div className={s.switchRow}>
+                  <span id="lobby-ready-label" className={s.switchLabel}>I'm ready</span>
                   <button
                     type="button"
-                    className={`${ui.btn} ${ui.primary} ${ui.block}`}
+                    role="switch"
+                    className="ui-switch"
+                    aria-checked={!!me.ready_to_start}
+                    aria-labelledby="lobby-ready-label"
+                    aria-busy={pending === 'ready' || undefined}
+                    onClick={() => run('ready', 'ready')}
+                    disabled={!!pending || status !== 'lobby'}
+                  />
+                </div>
+
+                {iAmHost ? (
+                  <button
+                    type="button"
+                    className="ui-btn ui-btn--primary ui-btn--lg ui-btn--block"
                     onClick={() => run('start', 'start')}
                     disabled={!canStart || !!pending}
                     aria-describedby={startHint ? 'lobby-start-hint' : undefined}
                   >
+                    {pending === 'start' && <span className="ui-spinner" aria-hidden="true" />}
                     {pending === 'start' ? 'Starting…' : 'Start the game'}
                   </button>
-                  {startHint && <p id="lobby-start-hint" className={ui.hint}>{startHint}</p>}
-                </div>
-              ) : (
-                <p className={s.waiting}>
-                  Waiting for {host ? <strong>{host.username}</strong> : 'the host'} to start the game.
-                  {startHint && <span className={s.waitingDetail}> {startHint}</span>}
-                </p>
-              )}
+                ) : (
+                  <p className={`ui-well ${s.waiting}`}>
+                    <Icon name="clock" size={18} />
+                    <span>Waiting for <strong>{hostName}</strong> to start the game.</span>
+                  </p>
+                )}
 
-              <button
-                type="button"
-                className={`${ui.btn} ${ui.ghost} ${s.leave}`}
-                onClick={() => run('leave', 'leave')}
-                disabled={!!pending}
-              >
-                {pending === 'leave' ? 'Leaving…' : 'Leave lobby'}
-              </button>
-            </>
-          ) : (
-            <>
-              <p className={ui.notice}>
-                {pending === 'join'
-                  ? 'Taking a seat…'
-                  : full
-                    ? 'The lobby is full.'
-                    : "You don't have a seat in this game."}
-              </p>
-              <button
-                type="button"
-                className={`${ui.btn} ${ui.primary} ${ui.block}`}
-                onClick={() => run('join', 'join')}
-                disabled={!!pending || full || status !== 'lobby'}
-              >
-                {pending === 'join' ? 'Joining…' : 'Join the game'}
-              </button>
-            </>
-          )}
-        </section>
+                <div className={s.footRow}>
+                  <p id="lobby-start-hint" className={`ui-hint ${s.hint}`}>{startHint}</p>
+                  <button
+                    type="button"
+                    className={`ui-btn ui-btn--ghost ${s.leave}`}
+                    onClick={() => run('leave', 'leave')}
+                    disabled={!!pending}
+                  >
+                    {pending === 'leave' ? 'Leaving…' : 'Leave lobby'}
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <button
+                  type="button"
+                  className="ui-btn ui-btn--primary ui-btn--lg ui-btn--block"
+                  onClick={() => run('join', 'join')}
+                  disabled={!!pending || full || status !== 'lobby'}
+                  aria-describedby={full ? 'lobby-join-hint' : undefined}
+                >
+                  {pending === 'join' && <span className="ui-spinner" aria-hidden="true" />}
+                  {pending === 'join' ? 'Joining…' : 'Join the game'}
+                </button>
+                {full && <p id="lobby-join-hint" className={`ui-reason ${s.hint}`}>All {MAX_PLAYERS} seats are taken.</p>}
+              </>
+            )}
+          </footer>
+        )}
       </div>
+
+      <ConfirmDialog
+        open={!!removing}
+        title={removing ? `Remove ${removing.username}?` : ''}
+        body="They leave the table and lose their seat. They can join again from their own screen while the game is still in the lobby."
+        confirmLabel="Remove"
+        busy={pending === 'remove'}
+        busyLabel="Removing…"
+        onConfirm={() => removing && removePlayer(removing.id)}
+        onCancel={() => setConfirmRemoveId(null)}
+      />
     </main>
   );
 }

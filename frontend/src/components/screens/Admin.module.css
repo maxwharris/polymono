@@ -1,120 +1,145 @@
+/* Admin: a calm, dense tool on the same system. A lacquer bar, then sections as headings over flush rows
+   split by hairlines. No cards. */
+
 .page {
+  min-height: 100vh;
+  min-height: 100dvh;
+  background: var(--room);
+}
+
+.bar {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  min-height: 56px;
+  padding: var(--safe-top) 8px 0 var(--gutter);
+  background: var(--lacquer);
+  border-bottom: 1px solid var(--seam);
+}
+
+.bar :global(.ui-btn--ghost) {
+  gap: 6px;
+  padding: 0 10px;
+}
+
+.content {
   width: 100%;
   max-width: 880px;
   margin: 0 auto;
-  padding: max(16px, env(safe-area-inset-top)) 16px max(32px, env(safe-area-inset-bottom));
-  display: grid;
-  gap: 16px;
+  padding: 24px var(--gutter) max(48px, calc(var(--safe-bottom) + 32px));
 }
 
-.header {
+.intro {
   display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.logo {
-  flex: none;
-  width: 56px;
-  height: auto;
-}
-
-.heading {
-  flex: 1;
-  min-width: 0;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 6px 16px;
 }
 
 .title {
-  color: var(--pm-gold);
-  font-size: 1.5rem;
-  font-weight: 800;
+  line-height: 1;
 }
 
 .subtitle {
-  color: var(--pm-muted);
-  font-size: 0.85rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font: 500 14px / 1.2 var(--font-text);
+  color: var(--slate);
+}
+
+.checking {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 16px 0;
+  color: var(--slate);
+}
+
+/* The one-off states (checking, not an admin) sit straight under the title. */
+.content > .section,
+.content > .checking {
+  margin-top: 28px;
 }
 
 .sections {
   display: grid;
-  gap: 16px;
+  gap: 40px;
+  margin-top: 28px;
 }
 
 .section {
   display: grid;
   gap: 12px;
-  padding: 16px;
-}
-
-@media (min-width: 640px) {
-  .section {
-    padding: 20px 24px;
-  }
 }
 
 .sectionHead {
   display: flex;
   align-items: baseline;
+  justify-content: space-between;
   gap: 8px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--seam);
 }
 
 .sectionTitle {
-  color: var(--pm-text);
-  font-size: 1.15rem;
-  font-weight: 700;
+  font: 600 22px / 1 var(--font-display);
+  letter-spacing: 0.01em;
+  color: var(--marble);
 }
 
 .count {
-  color: var(--pm-muted);
-  font-size: 0.9rem;
+  font: 500 14px / 1 var(--font-text);
+  font-variant-numeric: tabular-nums lining-nums;
+  color: var(--slate);
 }
 
 .copy {
-  color: var(--pm-text-2);
-  font-size: 0.95rem;
+  max-width: 62ch;
+  font: 400 var(--fs-body) / 1.45 var(--font-text);
+  color: var(--limestone);
 }
 
-/* accounts */
+.cta {
+  justify-self: start;
+}
+
+/* ---- accounts: flush rows ------------------------------------------------------------------------- */
 
 .users {
-  display: grid;
-  gap: 8px;
+  margin-top: -12px; /* the section head's hairline is the list's top edge */
 }
 
 .user {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
   grid-template-areas:
-    'token info'
+    'med info'
     'actions actions'
     'extra extra';
   align-items: center;
   gap: 8px 12px;
-  padding: 10px 12px;
-  border: 1px solid var(--pm-border);
-  border-radius: var(--pm-radius);
-  background: rgba(0, 0, 0, 0.16);
+  padding: 12px 0;
+  border-bottom: 1px solid var(--seam);
+}
+
+.user > :global(.ui-med) {
+  grid-area: med;
 }
 
 @media (min-width: 640px) {
   .user {
     grid-template-columns: auto minmax(0, 1fr) auto;
     grid-template-areas:
-      'token info actions'
+      'med info actions'
       'extra extra extra';
+    min-height: 64px;
   }
-}
-
-.token {
-  grid-area: token;
-  display: grid;
-  place-items: center;
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  background: rgba(0, 0, 0, 0.25);
-  font-size: 1.3rem;
-  line-height: 1;
 }
 
 .userInfo {
@@ -127,18 +152,18 @@
   flex-wrap: wrap;
   align-items: center;
   gap: 4px 8px;
-  font-weight: 700;
+  font: 600 16px / 1.2 var(--font-text);
+  color: var(--marble);
+}
+
+.userNameText {
   overflow-wrap: anywhere;
 }
 
-.you {
-  color: var(--pm-muted);
-  font-weight: 500;
-}
-
 .userMeta {
-  color: var(--pm-muted);
-  font-size: 0.85rem;
+  margin-top: 3px;
+  font: 400 var(--fs-meta) / 1.3 var(--font-text);
+  color: var(--slate);
 }
 
 .userActions {
@@ -146,19 +171,28 @@
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+  padding-left: 52px; /* under the name on a phone */
 }
 
 @media (min-width: 640px) {
   .userActions {
     justify-content: flex-end;
+    padding-left: 0;
   }
+}
+
+.listNote {
+  margin-top: -2px;
 }
 
 .inlineForm {
   grid-area: extra;
   display: grid;
   gap: 6px;
-  margin-top: 4px;
+  margin: 4px 0 4px 52px;
+  padding: 12px;
+  border-radius: var(--r-control);
+  background: var(--lacquer);
 }
 
 .inlineRow {
@@ -168,16 +202,22 @@
 }
 
 .inlineRow > input {
-  flex: 1 1 180px;
+  flex: 1 1 100%;
   width: auto;
   min-width: 0;
 }
 
-/* new account */
+@media (min-width: 640px) {
+  .inlineRow > input {
+    flex-basis: 180px;
+  }
+}
+
+/* ---- new account ---------------------------------------------------------------------------------- */
 
 .form {
   display: grid;
-  gap: 16px;
+  gap: 20px;
 }
 
 .formRow {
@@ -194,13 +234,17 @@
 .tokens {
   display: grid;
   gap: 8px;
+  min-width: 0;
+}
+
+.legend {
+  margin-bottom: 8px;
 }
 
 .tokenGrid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(128px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
   gap: 8px;
-  margin-top: 6px;
 }
 
 .tokenOption {
@@ -210,66 +254,125 @@
 }
 
 .tokenFace {
-  display: grid;
-  justify-items: center;
-  gap: 2px;
-  min-height: 44px;
-  padding: 10px 8px;
-  border: 2px solid var(--pm-border);
-  border-radius: var(--pm-radius);
-  background: rgba(0, 0, 0, 0.18);
-  text-align: center;
-  transition: border-color 0.15s ease, background-color 0.15s ease;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 56px;
+  padding: 8px 10px;
+  border-radius: var(--r-control);
+  background: var(--well);
+  box-shadow: inset 0 0 0 1px var(--seam-strong);
+  transition: background-color var(--dur-quick) ease, box-shadow var(--dur-quick) ease;
 }
 
-.tokenEmoji {
-  font-size: 1.6rem;
-  line-height: 1.1;
+.tokenText {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
 }
 
 .tokenName {
-  font-weight: 700;
+  font: 600 14px / 1.2 var(--font-text);
+  color: var(--marble);
 }
 
 .tokenOwner {
-  color: var(--pm-muted);
-  font-size: 0.8rem;
+  margin-top: 2px;
+  font: 400 12px / 1.2 var(--font-text);
+  color: var(--slate);
 }
 
 .tokenOption input:checked + .tokenFace {
-  border-color: var(--pm-gold);
-  background: rgba(212, 175, 55, 0.12);
+  background: var(--brass-wash);
+  box-shadow: inset 0 0 0 1.5px var(--brass-400);
+}
+
+.tokenOption input:checked + .tokenFace .tokenOwner {
+  color: var(--brass-300);
+}
+
+/* Before the accounts load: neutral tiles with a placeholder where Free / Taken by goes, nothing chosen. */
+.tokensChecking {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: -2px 0 4px;
+  font: 400 14px / 1.3 var(--font-text);
+  color: var(--slate);
+}
+
+.tokenGridLoading .tokenOption {
+  cursor: progress;
+}
+
+.tokenGridLoading .tokenOption input:disabled + .tokenFace {
+  cursor: progress;
+  background: var(--well);
+  box-shadow: inset 0 0 0 1px var(--seam);
+  outline: none;
+}
+
+.tokenOwnerPending {
+  display: block;
+  width: 44px;
+  height: 8px;
+  margin-top: 5px;
+  border-radius: 4px;
+  background: var(--seam);
 }
 
 .tokenOption input:focus-visible + .tokenFace {
-  outline: 3px solid var(--pm-gold);
+  outline: var(--focus-ring);
   outline-offset: 2px;
 }
 
 .tokenOption input:disabled + .tokenFace {
-  opacity: 0.5;
   cursor: not-allowed;
+  background: transparent;
+  box-shadow: none;
+  outline: 1px dashed var(--seam-strong);
+  outline-offset: -1px;
 }
 
-@media (hover: hover) {
+.tokenOption input:disabled + .tokenFace .tokenName {
+  color: var(--limestone);
+}
+
+@media (hover: hover) and (pointer: fine) {
   .tokenOption input:not(:disabled):not(:checked) + .tokenFace:hover {
-    border-color: rgba(212, 175, 55, 0.6);
+    background: var(--raised-hover);
   }
 }
 
-/* game */
+.formActions {
+  display: flex;
+}
+
+/* ---- game ----------------------------------------------------------------------------------------- */
 
 .subsection {
   display: grid;
   gap: 8px;
-  padding-top: 12px;
-  border-top: 1px solid var(--pm-border);
+  margin-top: 8px;
+  padding-top: 16px;
+  border-top: 1px solid var(--seam);
 }
 
 .subTitle {
-  color: var(--pm-gold-soft);
-  font-size: 1rem;
-  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font: 600 var(--fs-label) / 1.2 var(--font-text);
+  letter-spacing: 0;
+  color: var(--marble);
+}
+
+.subTitle :global(.ui-icon) {
+  color: var(--slate);
+}
+
+.dangerTitle :global(.ui-icon) {
+  color: var(--stop);
 }
 
 .hoursInput {
@@ -280,8 +383,15 @@
   flex: 0 1 120px;
 }
 
-.danger .subTitle {
-  color: var(--pm-danger-text);
+@media (min-width: 640px) {
+  .content {
+    padding-top: 32px;
+  }
+
+  .bar {
+    min-height: 64px;
+    padding: 0 16px 0 24px;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

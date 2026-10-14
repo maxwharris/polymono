@@ -20,8 +20,8 @@ export default class AppBoundary extends Component {
     return (
       <div className="splash" role="alert">
         <p className="splash-text">Something went wrong on this screen.</p>
-        <div className="splash-actions">
-          <button type="button" className="g-btn g-btn--primary" onClick={() => window.location.reload()}>
+        <div className="splash-actions splash-actions--now">
+          <button type="button" className="ui-btn ui-btn--primary" onClick={() => window.location.reload()}>
             Reload
           </button>
         </div>

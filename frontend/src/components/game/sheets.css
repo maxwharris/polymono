@@ -1,0 +1,830 @@
+/* Sheets and drawers of the game screen: property and player sheets, My properties, the drawn card, the
+ * away digest, results, turn alerts and the password form. Surfaces come from ui-sheet / ui-modal (ui.css). */
+
+/* ---- property sheet ---------------------------------------------------------------------------------- */
+
+.psheet__card {
+  margin: 10px 2px 0 8px; /* room for the deed's index tab on the left */
+}
+
+.psheet__h {
+  margin-bottom: 8px;
+  font: 600 var(--fs-display-s) / 1 var(--font-display);
+}
+
+.psheet__manage {
+  margin-top: 20px;
+}
+
+.psheet__here {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 18px;
+  padding: 0 4px;
+  font: 500 14px / 1.2 var(--font-text);
+  color: var(--limestone);
+}
+
+.psheet__here > .ui-icon {
+  color: var(--slate);
+}
+
+.psheet__actions > .ui-btn--ghost:only-child {
+  flex: 1 1 auto;
+}
+
+/* ---- player sheet ------------------------------------------------------------------------------------ */
+
+.ps__head {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 10px 0 4px;
+}
+
+.ps__who {
+  min-width: 0;
+}
+
+.ps__head .ui-sheet__title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ps__you {
+  font-family: var(--font-text);
+}
+
+.ps__sub {
+  margin-top: 4px;
+  font: 500 14px / 1.2 var(--font-text);
+  color: var(--slate);
+}
+
+.ps__stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  margin-top: 14px;
+  border-top: 1px solid var(--seam);
+  border-bottom: 1px solid var(--seam);
+}
+
+.ps__stats > div {
+  padding: 10px 12px;
+}
+
+.ps__stats > div + div {
+  border-left: 1px solid var(--seam);
+}
+
+.ps__stats dt {
+  font: 500 13px / 1.2 var(--font-text);
+  color: var(--slate);
+}
+
+.ps__stats dd {
+  margin-top: 3px;
+  font-size: 18px;
+  color: var(--marble);
+}
+
+.ps__tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 12px;
+}
+
+.ps__empty {
+  padding: 18px 0 6px;
+  font: 400 15px / 1.4 var(--font-text);
+  color: var(--slate);
+}
+
+.ps__groups {
+  display: grid;
+  gap: 14px;
+  margin-top: 16px;
+}
+
+.ps__list {
+  list-style: none;
+}
+
+.ps__item {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  min-height: 44px;
+  padding: 0 8px;
+  border-bottom: 1px solid var(--seam);
+  text-align: left;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .ps__item:hover {
+    background: rgba(255, 255, 255, 0.03);
+  }
+}
+
+.ps__item:focus-visible {
+  outline-offset: -2px;
+}
+
+/* ---- My properties (phone sheet, desktop drawer) ----------------------------------------------------- */
+
+.mine {
+  min-height: 0;
+}
+
+.mine__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 18px 8px 12px var(--gutter);
+  border-bottom: 1px solid var(--seam);
+}
+
+.mine__cash {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 6px;
+  font: 500 15px / 1.2 var(--font-text);
+  color: var(--limestone);
+}
+
+.mine__cash .ui-money {
+  font-size: var(--fs-money-l);
+  color: var(--marble);
+}
+
+.mine__debt {
+  padding: 14px var(--gutter);
+  background: rgba(215, 180, 106, 0.08);
+  border-bottom: 1px solid var(--brass-800);
+}
+
+.mine__debt-title {
+  font: 600 22px / 1.1 var(--font-display);
+  letter-spacing: var(--ls-display);
+  color: var(--brass-300);
+}
+
+.mine__debt-title .ui-money {
+  font-size: 20px;
+}
+
+.mine__debt-sub {
+  margin: 6px 0 10px;
+  font: 400 14px / 1.35 var(--font-text);
+  color: var(--limestone);
+}
+
+.mine__debt-sub .ui-money {
+  color: var(--marble);
+}
+
+.mine__debt-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.mine__debt-actions > .ui-btn {
+  flex: 1 1 140px;
+}
+
+.mine__scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 4px var(--gutter) 16px;
+}
+
+.mine__empty {
+  padding: 24px 0;
+  font: 400 15px / 1.4 var(--font-text);
+  color: var(--slate);
+}
+
+.mine__group {
+  margin-top: 18px;
+}
+
+.mine__group-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+  font: 600 15px / 1.2 var(--font-text);
+  letter-spacing: 0;
+  color: var(--marble);
+}
+
+.mine__count {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font: 500 13px / 1 var(--font-text);
+  color: var(--slate);
+}
+
+.mine__count.is-full {
+  color: var(--brass-300);
+}
+
+.mine__house-cost {
+  margin-left: auto;
+  font: 400 13px / 1 var(--font-text);
+  color: var(--slate);
+}
+
+.mine__house-cost .ui-money {
+  font-weight: 500;
+  color: var(--limestone);
+}
+
+.mine__hint {
+  margin-bottom: 2px;
+  font: 400 13px / 1.3 var(--font-text);
+  color: var(--slate);
+}
+
+.mine__list {
+  list-style: none;
+}
+
+.mine__item {
+  padding: 10px 0 12px;
+  border-bottom: 1px solid var(--seam);
+}
+
+.mine__item-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.mine__name {
+  min-height: 44px;
+  padding: 0;
+  font: 600 16px / 1.2 var(--font-text);
+  color: var(--marble);
+  text-align: left;
+  text-decoration: underline;
+  text-decoration-color: var(--seam-strong);
+  text-underline-offset: 4px;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .mine__name:hover {
+    text-decoration-color: var(--brass-300);
+  }
+}
+
+.mine__rent {
+  font: 400 14px / 1.2 var(--font-text);
+  color: var(--limestone);
+  white-space: nowrap;
+}
+
+.mine__rent .ui-money {
+  color: var(--marble);
+}
+
+.mine__item.is-mortgaged .mine__name {
+  color: var(--limestone);
+}
+
+.mine__foot {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 8px calc(8px + var(--safe-bottom)) var(--gutter);
+  border-top: 1px solid var(--seam);
+}
+
+@media (max-width: 899px) {
+  .mine__foot {
+    padding-bottom: 8px;
+  }
+
+  .mine__title {
+    font-size: 30px;
+  }
+}
+
+.mine__supply {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font: 400 13px / 1.3 var(--font-text);
+  color: var(--slate);
+  text-wrap: balance; /* beside Trade at 375px it takes two lines: break it evenly, not "… hotels / left" */
+}
+
+.mine__supply .ui-icon {
+  flex: none;
+}
+
+/* manage controls: [−] houses [+ $100]   Mortgage +$70 */
+.manage {
+  margin-top: 6px;
+}
+
+.manage__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.manage__build {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.manage__btn {
+  gap: 4px;
+  padding: 0 12px;
+}
+
+.manage__mortgage {
+  min-width: 104px;
+  margin-left: auto;
+}
+
+.manage__mortgage .ui-btn__stack {
+  gap: 2px;
+  font-size: 14px;
+}
+
+.manage__mortgage .ui-btn__sub {
+  font-size: 13px;
+  color: var(--limestone);
+}
+
+.manage__square {
+  width: var(--hit);
+  padding: 0;
+}
+
+.manage__btn .ui-money {
+  font-weight: 600;
+}
+
+.manage .ui-reason {
+  margin-top: 8px;
+}
+
+/* ---- the drawn card (Opportunity, Community Fund) ---------------------------------------------------- */
+
+dialog.drawn {
+  width: min(360px, calc(100% - 32px));
+  padding: 0;
+  overflow: visible;
+  background: transparent;
+  box-shadow: none;
+}
+
+dialog.drawn[open] {
+  animation: drawn-in 420ms cubic-bezier(0.2, 0.9, 0.3, 1.15) 120ms both;
+}
+
+@keyframes drawn-in {
+  from { opacity: 0; transform: perspective(900px) rotateY(70deg) translateY(16px) scale(0.92); }
+  to { opacity: 1; transform: none; }
+}
+
+.drawn__card {
+  padding: 7px;
+  color: var(--ink);
+  background: var(--paper);
+  border-radius: var(--r-deed);
+  box-shadow: var(--shadow-paper);
+}
+
+.drawn__in {
+  overflow: hidden;
+  border: 1px solid var(--paper-line);
+  border-radius: var(--r-deed-in);
+}
+
+.drawn__band {
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  padding: 18px 12px 18px;
+  color: var(--brass-300);
+  text-align: center;
+  background: var(--g-special);
+  box-shadow: inset 0 0 0 4px var(--g-special), inset 0 0 0 5px var(--brass-600), inset 0 0 0 7px var(--g-special), inset 0 0 0 8px var(--brass-800);
+}
+
+.drawn__emblem {
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  border-radius: 10px;
+  color: var(--brass-300);
+  box-shadow: inset 0 0 0 1px var(--brass-600);
+  transform: rotate(45deg);
+}
+
+.drawn__emblem .ui-icon {
+  transform: rotate(-45deg);
+}
+
+.drawn__title {
+  font: 600 30px / 1 var(--font-display);
+  letter-spacing: 0.02em;
+  color: var(--marble);
+}
+
+.drawn__text {
+  padding: 26px 22px 18px;
+  font: 500 19px / 1.45 var(--font-text);
+  color: var(--ink);
+  text-align: center;
+  text-wrap: balance;
+}
+
+.drawn__foot {
+  padding: 0 0 14px;
+  font: italic 400 13px / 1 var(--font-text);
+  color: var(--ink-2);
+  text-align: center;
+}
+
+/* OK is part of the card: on the card stock under the framed panel, navy and gilt like the band. A brass
+   button on the scrim read as the turn panel's Roll button under it. */
+.drawn__ok {
+  margin-top: 7px;
+  color: var(--marble);
+  background: var(--g-special);
+  box-shadow: inset 0 0 0 1px var(--brass-600), 0 1px 0 rgba(0, 0, 0, 0.25);
+}
+
+.drawn__ok:focus-visible {
+  outline-color: var(--ink); /* the brass ring disappears on paper */
+  outline-offset: 2px;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .drawn__ok:hover {
+    background: #233A70;
+  }
+}
+
+/* ---- away digest -------------------------------------------------------------------------------------- */
+
+.digest__sub {
+  font: 400 15px / 1.4 var(--font-text);
+  color: var(--limestone);
+}
+
+.digest__facts {
+  list-style: none;
+  margin-top: 12px;
+}
+
+.digest__facts li {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 44px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--seam);
+  font: 400 15px / 1.35 var(--font-text);
+  color: var(--limestone);
+}
+
+.digest__facts .ui-icon {
+  flex: none;
+  color: var(--slate);
+}
+
+.digest__facts .ui-money {
+  color: var(--marble);
+}
+
+.digest__facts li.is-brass,
+.digest__facts li.is-brass .ui-icon {
+  color: var(--brass-300);
+}
+
+.digest__h,
+.over__h {
+  margin: 20px 0 6px;
+  font: 600 var(--fs-display-s) / 1 var(--font-display);
+}
+
+.digest__lines .feed__line {
+  margin-left: 0;
+}
+
+/* ---- results (game over) ------------------------------------------------------------------------------ */
+
+.over__hero {
+  padding-top: 14px;
+  text-align: center;
+}
+
+.over__crown {
+  display: grid;
+  place-items: center;
+  width: 56px;
+  height: 56px;
+  margin: 0 auto 12px;
+  border-radius: 50%;
+  color: var(--brass-300);
+  box-shadow: inset 0 0 0 1px var(--brass-600), inset 0 0 0 4px var(--raised), inset 0 0 0 5px var(--brass-800);
+}
+
+.over__title {
+  font: 600 32px / 1.05 var(--font-display);
+  letter-spacing: 0.01em;
+  text-wrap: balance;
+}
+
+.over__sub {
+  margin-top: 6px;
+  font: 500 14px / 1.2 var(--font-text);
+  color: var(--limestone);
+}
+
+.over__list {
+  list-style: none;
+  margin-top: 16px;
+}
+
+.over__list li {
+  display: grid;
+  grid-template-columns: 22px auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  min-height: 52px;
+  border-bottom: 1px solid var(--seam);
+}
+
+.over__rank {
+  font: 600 20px / 1 var(--font-display);
+  color: var(--brass-300);
+  text-align: center;
+}
+
+.over__name {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  font: 600 16px / 1.2 var(--font-text);
+  color: var(--marble);
+}
+
+.over__worth {
+  font: 400 14px / 1.2 var(--font-text);
+  color: var(--limestone);
+  white-space: nowrap;
+}
+
+.over__worth .ui-money {
+  color: var(--marble);
+}
+
+.over__list li.is-out .over__name,
+.over__list li.is-out .over__worth {
+  color: var(--slate);
+}
+
+.over__stats {
+  margin-top: 14px;
+}
+
+.over__stats .feed__line {
+  margin-left: 0;
+}
+
+/* past games */
+.past__loading {
+  font: 400 14px / 1.4 var(--font-text);
+  color: var(--slate);
+}
+
+.past__list {
+  list-style: none;
+}
+
+.past__game {
+  border-bottom: 1px solid var(--seam);
+}
+
+.past__game summary {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 52px;
+  cursor: pointer;
+  list-style: none;
+}
+
+.past__game summary::-webkit-details-marker {
+  display: none;
+}
+
+.past__game summary:focus-visible {
+  outline-offset: -2px;
+}
+
+.past__what {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  font: 600 15px / 1.2 var(--font-text);
+  color: var(--marble);
+}
+
+.past__what small {
+  font: 400 13px / 1.2 var(--font-text);
+  color: var(--slate);
+}
+
+.past__chev {
+  margin-left: auto;
+  color: var(--slate);
+  transition: transform var(--dur-quick) ease;
+}
+
+.past__game[open] .past__chev {
+  transform: rotate(180deg);
+}
+
+.past__standings {
+  list-style: none;
+  padding: 0 0 10px 6px;
+}
+
+.past__standings li {
+  display: grid;
+  grid-template-columns: 18px auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  min-height: 36px;
+}
+
+.past__standings .over__rank {
+  font-size: 16px;
+}
+
+.past__name {
+  font: 500 14px / 1.2 var(--font-text);
+  color: var(--marble);
+}
+
+.past__worth {
+  font: 400 13px / 1.2 var(--font-text);
+  color: var(--slate);
+  white-space: nowrap;
+}
+
+.past__worth .ui-money {
+  color: var(--limestone);
+}
+
+/* ---- turn alerts --------------------------------------------------------------------------------------- */
+
+.alerts__lead {
+  font: 400 15px / 1.45 var(--font-text);
+  color: var(--limestone);
+}
+
+.alerts__switch {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 64px;
+  margin-top: 14px;
+  padding: 0 4px;
+  border-top: 1px solid var(--seam);
+  border-bottom: 1px solid var(--seam);
+}
+
+.alerts__switch-label {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 12px;
+  font: 600 16px / 1.2 var(--font-text);
+  color: var(--marble);
+}
+
+.alerts__switch-label > .ui-icon {
+  color: var(--brass-300);
+}
+
+.alerts__switch-label small {
+  display: block;
+  margin-top: 2px;
+  font: 500 13px / 1.2 var(--font-text);
+  color: var(--slate);
+}
+
+.alerts__h {
+  margin: 18px 0 8px;
+  font: 600 var(--fs-display-s) / 1 var(--font-display);
+}
+
+.alerts__steps {
+  list-style: none;
+  display: grid;
+  gap: 14px;
+  margin-bottom: 12px;
+}
+
+.alerts__steps li {
+  display: grid;
+  grid-template-columns: 26px minmax(0, 1fr);
+  gap: 10px;
+  font: 400 15px / 1.45 var(--font-text);
+  color: var(--limestone);
+}
+
+.alerts__n {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
+  font: 600 14px / 1 var(--font-text);
+  color: var(--brass-300);
+  box-shadow: inset 0 0 0 1px var(--brass-600);
+}
+
+.alerts__topic {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.alerts__topic code {
+  padding: 8px 10px;
+  border-radius: 8px;
+  font: 500 14px / 1.2 ui-monospace, 'SF Mono', Menlo, monospace;
+  color: var(--marble);
+  background: var(--well);
+  box-shadow: inset 0 0 0 1px var(--seam-strong);
+  overflow-wrap: anywhere;
+}
+
+.alerts__links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.alerts__links .ui-btn--ghost {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--brass-300);
+}
+
+.alerts__msg {
+  margin-top: 12px;
+}
+
+/* ---- password ------------------------------------------------------------------------------------------ */
+
+.pw__form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.pw__form .ui-sheet__actions {
+  margin-top: 4px;
+}
+
+/* ---- confirm ------------------------------------------------------------------------------------------- */
+
+.g-confirm__body p + p {
+  margin-top: 8px;
+}

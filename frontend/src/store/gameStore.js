@@ -20,7 +20,10 @@ const MAX_EVENTS = 5000;
 const MAX_TOASTS = 5;
 const AWAY_MS = 10 * 60 * 1000; // hidden this long counts as "away": show the digest on return
 const DIGEST_MIN_EVENTS = 3;
-const TOAST_TTL = { info: 4500, success: 4500, warn: 6500, error: 8000 };
+// Toasts leave after 6s, except offers (ttl null where they are made) and errors, which wait to be dismissed.
+const TOAST_TTL = { info: 6000, success: 6000, warn: 6000, error: null };
+// The board never takes this long; if it somehow does, stop holding toasts and feed lines back.
+const HOLD_LIMIT_MS = 20000;
 
 const TOKEN_KEY = 'token';
 const USER_KEY = 'polymono:user';
@@ -57,6 +60,8 @@ const sessionDefaults = () => ({
   tradeOptions: null,
 
   animating: false, // the Board sets this while dice/token animations run
+  shownEventId: null, // newest event the board has finished showing: the feed holds newer ones while animating
+  boardMover: null, // player id whose roll or move the board is animating (null: none, or only money floaters)
   selectedPosition: null, // the space shown in the property sheet
   sheet: null, // null (board) | 'players' | 'side' | 'mine': the panel open over the board on phones
   sideTab: 'activity', // 'activity' | 'chat'
@@ -75,6 +80,8 @@ let connectedBefore = false;
 let loadPending = false; // loadAll() is running
 let hiddenAt = null;
 let awaySince = null; // lastSeen when the player came back (or the first load failed): the digest starts there
+let heldOutputs = []; // presenter toasts and sounds waiting for the board to finish animating
+let holdTimer = null;
 
 // ---- helpers ------------------------------------------------------------------------------------------
 
@@ -167,6 +174,11 @@ export function selectTurnState(state) {
   return state.game?.turn_state ?? null;
 }
 
+/** While the board animates, the feed shows events up to this id and holds the rest; null = show them all. */
+export function selectFeedCutoff(state) {
+  return state.animating ? state.shownEventId : null;
+}
+
 // ---- store --------------------------------------------------------------------------------------------
 
 const useGameStore = create((set, get) => {
@@ -223,23 +235,61 @@ const useGameStore = create((set, get) => {
     if ((readId(lastSeenKey(user.id)) || 0) < last) writeItem(lastSeenKey(user.id), last);
   }
 
+  /** Toast and sound for one presenter result. */
+  function deliver(out) {
+    if (out.sound) playSound(out.sound, { background: out.sound === 'turn' });
+    if (out.toast && (isVisible() || out.toast.ttl === null)) {
+      const { tradeId, ...toast } = out.toast;
+      if (tradeId) {
+        toast.tradeId = tradeId;
+        toast.action = { label: 'Review the offer', run: () => get().openTrade({ tradeId }) };
+      }
+      get().toast(toast);
+    }
+  }
+
+  /**
+   * "Don't spoil the roll": while the board is still showing the dice and the walk, a toast ("You paid jack
+   * $450 rent") would tell you where you land before you see it. Hold toasts and sounds until it is done.
+   * The card I drew is kept right away: CardModal itself waits for the animation.
+   */
   function present(events) {
     const s = get();
     if (!s.user) return;
     const me = selectMyPlayer(s);
     const ctx = { userId: s.isSpectator ? 0 : s.user.id, myPlayerId: me?.id ?? null, players: s.players, properties: s.properties };
-    const visible = isVisible();
     for (const event of events) {
       const out = presentEvent(event, ctx);
       if (!out) continue;
       if (out.card) set({ cardModal: out.card });
-      if (out.sound) playSound(out.sound, { background: out.sound === 'turn' });
-      if (out.toast && (visible || out.toast.ttl === null)) {
-        const { tradeId, ...toast } = out.toast;
-        if (tradeId) toast.action = { label: 'View', run: () => get().openTrade({ tradeId }) };
-        s.toast(toast);
-      }
+      if (!out.sound && !out.toast) continue;
+      if (get().animating) heldOutputs.push(out);
+      else deliver(out);
     }
+  }
+
+  /** The board has caught up with the log (or is not animating): everything so far counts as shown. */
+  function markShown() {
+    if (get().animating) return;
+    const { events, shownEventId } = get();
+    const last = events.length ? events[events.length - 1].id : null;
+    if (last !== shownEventId) set({ shownEventId: last });
+  }
+
+  function releaseHold() {
+    clearTimeout(holdTimer);
+    holdTimer = null;
+    set({ animating: false, boardMover: null });
+    markShown();
+    const waiting = heldOutputs;
+    heldOutputs = [];
+    waiting.forEach(deliver);
+  }
+
+  function dropHeld() {
+    clearTimeout(holdTimer);
+    holdTimer = null;
+    heldOutputs = [];
   }
 
   function receiveEvents(incoming, { live }) {
@@ -247,7 +297,12 @@ const useGameStore = create((set, get) => {
     const known = new Set(prev.map(e => e.id));
     const fresh = (incoming || []).filter(e => e && !known.has(e.id));
     if (!fresh.length) return;
-    set({ events: mergeEvents(prev, fresh) });
+    set({ events: mergeEvents(prev, fresh) }); // the board's director starts animating inside this set
+    if (get().animating && get().boardMover == null) {
+      const moved = fresh.find(e => e.type === 'roll' || (e.type === 'move' && e.data?.kind !== 'jail'));
+      if (moved) set({ boardMover: moved.player_id });
+    }
+    markShown();
     persistSeen();
     if (live) present(fresh);
   }
@@ -336,6 +391,7 @@ const useGameStore = create((set, get) => {
         seenMarkerId: lastSeen,
         awayDigestSince: unseen.length >= DIGEST_MIN_EVENTS ? lastSeen : null
       });
+      markShown();
       persistSeen();
     } else {
       awaySince = lastSeen; // the resync that gets the log shows the digest
@@ -357,6 +413,7 @@ const useGameStore = create((set, get) => {
     writeJSON(USER_KEY, user);
     setApiToken(token);
     awaySince = null;
+    dropHeld();
     set({ ...sessionDefaults(), user, token, isSpectator: !!user?.isSpectator, ready: true });
     openSocket(token);
     await loadAll();
@@ -430,6 +487,7 @@ const useGameStore = create((set, get) => {
       const patch = { events, eventsLoaded: true };
       if (gap || !get().eventsLoaded) patch.hasOlderEvents = more;
       set(patch);
+      markShown();
       persistSeen();
       loaded = true;
     }
@@ -515,6 +573,7 @@ const useGameStore = create((set, get) => {
       setApiToken(null);
       connectedBefore = false;
       awaySince = null;
+      dropHeld();
       removeItem(TOKEN_KEY);
       removeItem(USER_KEY);
       set({ ...sessionDefaults(), ready: true, toasts: [] });
@@ -603,14 +662,32 @@ const useGameStore = create((set, get) => {
       return older;
     },
 
-    setAnimating: (animating) => set({ animating: !!animating }),
+    /**
+     * The Board's director calls this while it plays dice, walks and money floaters. Toasts and feed lines
+     * that arrive meanwhile are held (see present()) and released when it is done.
+     */
+    setAnimating: (animating) => {
+      const on = !!animating;
+      if (on === get().animating) return;
+      if (!on) {
+        releaseHold();
+        return;
+      }
+      set({ animating: true });
+      clearTimeout(holdTimer);
+      holdTimer = setTimeout(releaseHold, HOLD_LIMIT_MS);
+    },
 
     // ---- toasts -------------------------------------------------------------------------------------
 
-    /** { tone: 'info'|'success'|'error'|'warn', title, body?, icon?, action?: { label, run }, ttl? (ms, null = sticky) } */
-    toast: ({ tone = 'info', title, body, icon, action, ttl } = {}) => {
+    /**
+     * { tone: 'info'|'success'|'error'|'warn', title, body?, actor? (user id: their medallion leads the toast),
+     *   icon? (an Icon name, for toasts without a person), action?: { label, run }, ttl? (ms, null = sticky),
+     *   tradeId? }
+     */
+    toast: ({ tone = 'info', title, body, icon, actor, action, ttl, tradeId } = {}) => {
       const id = ++toastSeq;
-      const entry = { id, tone, title, body, icon, action, ttl: ttl === undefined ? (TOAST_TTL[tone] ?? 5000) : ttl };
+      const entry = { id, tone, title, body, icon, actor, action, tradeId, ttl: ttl === undefined ? (TOAST_TTL[tone] ?? 6000) : ttl };
       set(s => ({ toasts: [...s.toasts, entry].slice(-MAX_TOASTS) }));
       return id;
     },

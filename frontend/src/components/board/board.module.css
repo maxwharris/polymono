@@ -1,4 +1,5 @@
-/* Board overlays (DOM, outside or projected over the canvas). The canvas fills .root, which fills its parent. */
+/* Board overlays (DOM, outside or projected over the canvas). The canvas fills .root, which fills its parent.
+   Midnight Deco tokens (src/index.css): lacquer glass over the night table, brass for "on". */
 
 .root {
   position: relative;
@@ -8,7 +9,7 @@
   min-height: 0;
   overflow: hidden;
   isolation: isolate; /* drei Html sets z-indices on floaters and labels: keep them under the app's sheets */
-  background: #14201a;
+  background: var(--room);
   touch-action: none;
   -webkit-user-select: none;
   user-select: none;
@@ -18,147 +19,202 @@
   display: grid;
   place-items: center;
   height: 100%;
-  padding: 16px;
-  color: #cfd8c8;
-  font: 14px/1.4 system-ui, sans-serif;
+  padding: var(--space-4);
+  color: var(--limestone);
+  font: 400 var(--fs-body) / var(--lh-body) var(--font-text);
   text-align: center;
 }
 
-/* loading */
+/* ---- lacquer glass, shared by the controls, the loading pill, labels and floaters ---------------------- */
+
+.round,
+.follow,
+.progress,
+.label,
+.floater {
+  background: rgb(16 26 45 / 0.84);
+  box-shadow: inset 0 0 0 1px var(--seam), 0 6px 16px rgb(0 0 0 / 0.35);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+}
+
+/* ---- loading ------------------------------------------------------------------------------------------ */
+
+/* Centred over the board, so a docked or floating turn panel can't hide it. It only shows while the board's
+   art is missing (Board.jsx: LoadingOverlay), so it never sits over a drawn board. */
 .progress {
   position: absolute;
   left: 50%;
-  bottom: 16px;
-  transform: translateX(-50%);
+  top: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 40;
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 7px 12px;
-  border-radius: 999px;
-  background: rgb(10 20 15 / 0.78);
-  color: #e8efe6;
-  font: 600 12px/1 system-ui, sans-serif;
+  gap: var(--space-3);
+  height: 36px;
+  padding: 0 var(--space-4);
+  border-radius: var(--r-round);
+  color: var(--limestone);
+  font: 500 var(--fs-meta) / 1 var(--font-text);
+  white-space: nowrap;
   pointer-events: none;
   transition: opacity 0.4s;
 }
 
-.progress[data-done='true'] {
+.progress[data-hidden='true'] {
   opacity: 0;
 }
 
 .bar {
-  width: 90px;
+  width: 96px;
   height: 4px;
   border-radius: 2px;
-  background: rgb(255 255 255 / 0.18);
+  background: var(--seam);
   overflow: hidden;
 }
 
 .bar > i {
   display: block;
   height: 100%;
-  background: #ffd166;
+  background: var(--brass-400);
   transition: width 0.2s;
 }
 
-/* camera buttons */
+/* ---- camera controls: top right, 40px visible, 44px to the touch -------------------------------------- */
+
 .controls {
   position: absolute;
-  right: 8px;
-  bottom: 8px;
+  top: var(--space-2);
+  right: 10px;
+  z-index: 40; /* above drei's Html floaters and labels (z-index 0 to 30), still inside .root's isolation */
   display: flex;
-  gap: 6px;
+  gap: var(--space-2);
 }
 
-.controls button {
+.round,
+.follow {
+  position: relative;
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  height: 32px;
-  min-width: 32px;
-  padding: 0 10px;
-  border: 1px solid rgb(255 255 255 / 0.16);
-  border-radius: 999px;
-  background: rgb(10 20 15 / 0.72);
-  color: #e8efe6;
-  font: 600 12px/1 system-ui, sans-serif;
+  justify-content: center;
+  height: 40px;
+  min-width: 40px;
+  margin: 2px 0;
+  border: 0;
+  border-radius: var(--r-round);
+  color: var(--limestone);
+  font: 500 14px / 1 var(--font-text);
+  white-space: nowrap;
   cursor: pointer;
-  -webkit-backdrop-filter: blur(4px);
-  backdrop-filter: blur(4px);
+  transition: background-color var(--dur-quick), color var(--dur-quick);
 }
 
-.controls button:hover {
-  background: rgb(20 40 30 / 0.85);
+.round::after,
+.follow::after {
+  content: '';
+  position: absolute;
+  inset: -2px; /* 44px hit area */
+  border-radius: inherit;
 }
 
-.controls button:focus-visible {
-  outline: 2px solid #ffd166;
-  outline-offset: 2px;
+/* Controls take the control outline (3:1 on lacquer), not the decorative seam. */
+.round,
+.follow {
+  box-shadow: inset 0 0 0 1px var(--seam-strong), 0 6px 16px rgb(0 0 0 / 0.35);
 }
 
-.controls button svg {
-  width: 16px;
-  height: 16px;
+.round {
+  width: 40px;
+  padding: 0;
 }
 
-.dot {
+.follow {
+  gap: var(--space-2);
+  padding: 0 14px 0 13px;
+}
+
+.round:hover,
+.follow:hover {
+  background: rgb(23 35 56 / 0.92);
+  color: var(--marble);
+}
+
+.round:active,
+.follow:active {
+  background: rgb(29 43 69 / 0.95);
+}
+
+.follow[aria-pressed='true'] {
+  color: var(--marble);
+}
+
+/* The lamp: off is an empty ring, on is lit brass. The label says it too ("Follow" / "Following jack"). */
+.lamp {
+  flex: none;
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: rgb(255 255 255 / 0.3);
+  box-shadow: inset 0 0 0 1.5px var(--slate);
 }
 
-.controls button[aria-pressed='true'] .dot {
-  background: #2ec4b6;
-  box-shadow: 0 0 6px #2ec4b6;
+.follow[aria-pressed='true'] .lamp {
+  background: var(--brass-300);
+  box-shadow: 0 0 8px rgb(235 211 160 / 0.7);
 }
 
-/* token name on hover */
+@media (min-width: 900px) {
+  .controls {
+    top: var(--space-4);
+    right: var(--space-4);
+  }
+}
+
+/* ---- token name on hover ------------------------------------------------------------------------------ */
+
 .label {
-  padding: 3px 8px;
-  border: 2px solid;
-  border-radius: 999px;
-  background: rgb(10 20 15 / 0.85);
-  color: #fff;
-  font: 600 12px/1.2 system-ui, sans-serif;
+  padding: 5px 10px 5px 9px;
+  border-left: 3px solid var(--pc, var(--brass-400));
+  border-radius: 4px var(--r-round) var(--r-round) 4px;
+  color: var(--marble);
+  font: 600 12px / 1.2 var(--font-text);
   white-space: nowrap;
   pointer-events: none;
 }
 
-/* money floaters */
+/* ---- money floaters ----------------------------------------------------------------------------------- */
+
 .floater {
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 3px 9px;
-  border-radius: 8px;
-  font: 800 16px/1.1 system-ui, sans-serif;
+  gap: 1px;
+  padding: 4px 10px 5px;
+  border-radius: var(--r-control);
+  font: 600 var(--fs-money) / 1.1 var(--font-text);
+  font-variant-numeric: tabular-nums lining-nums;
+  font-kerning: none;
   white-space: nowrap;
-  text-shadow: 0 1px 2px rgb(0 0 0 / 0.6);
   pointer-events: none;
-  animation: floater-rise 2s ease-out forwards;
+  animation: floater-rise 2s var(--ease-out) forwards;
 }
 
 .floater span {
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  opacity: 0.85;
+  color: var(--limestone);
+  font: 500 11px / 1.1 var(--font-text);
 }
 
 .gain {
-  color: #7cf29c;
-  background: rgb(8 40 20 / 0.7);
+  color: var(--go);
+  box-shadow: inset 0 0 0 1px rgb(82 201 140 / 0.45), 0 6px 16px rgb(0 0 0 / 0.35);
 }
 
 .loss {
-  color: #ff8a8a;
-  background: rgb(50 10 10 / 0.7);
+  color: var(--stop);
+  box-shadow: inset 0 0 0 1px var(--stop-line), 0 6px 16px rgb(0 0 0 / 0.35);
 }
 
 @keyframes floater-rise {
-  0% { opacity: 0; transform: translateY(8px) scale(0.9); }
+  0% { opacity: 0; transform: translateY(8px) scale(0.92); }
   12% { opacity: 1; transform: translateY(0) scale(1); }
   75% { opacity: 1; }
   100% { opacity: 0; transform: translateY(-36px); }

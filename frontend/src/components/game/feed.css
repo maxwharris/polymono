@@ -1,0 +1,178 @@
+/* Activity and chat: underline tabs, then the feed. Turn groups with a 22px medallion head; lines with an 18px
+ * slate icon and limestone text; lines that involve you carry a brass rule and wash; new lines a brass dot. */
+
+.side {
+  min-height: 0;
+}
+
+.side__tabs {
+  flex: none;
+  padding: 8px 12px 0;
+}
+
+.side__pane {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.side__pane--feed {
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.side__pane--chat > * {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.side__title {
+  display: none;
+}
+
+/* Phone: the bottom bar picks Activity or Chat, so the sheet drops its own tabs. */
+@media (max-width: 899px) {
+  .side__tabs {
+    display: none;
+  }
+
+  .side__title {
+    display: block;
+    padding: 18px var(--gutter) 4px;
+    font-size: 30px;
+  }
+}
+
+.feed {
+  padding: 4px 0 20px;
+}
+
+.feed__empty {
+  padding: 24px 16px;
+  font: 400 15px / 1.4 var(--font-text);
+  color: var(--slate);
+  text-align: center;
+}
+
+.feed__new {
+  margin: 10px 16px 4px;
+}
+
+.feed__new-dot {
+  flex: none;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--brass-300);
+}
+
+.feed__groups {
+  list-style: none;
+}
+
+.feed__group {
+  padding: 12px 16px 6px;
+}
+
+.feed__head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font: 600 14px / 1.2 var(--font-text);
+  letter-spacing: 0;
+  color: var(--marble);
+}
+
+.feed__head-icon {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  flex: none;
+  color: var(--slate);
+}
+
+.feed__who {
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.feed__time {
+  margin-left: auto;
+  flex: none;
+  font: 400 13px / 1.2 var(--font-text);
+  color: var(--slate);
+}
+
+.feed__lines {
+  list-style: none;
+  margin-top: 4px;
+}
+
+.feed__line {
+  position: relative;
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr);
+  align-items: start;
+  gap: 10px;
+  margin-left: 4px;
+  padding: 6px 8px 6px 6px;
+  border-radius: 8px;
+  font: 400 14px / 1.4 var(--font-text);
+  color: var(--limestone);
+}
+
+.feed__icon {
+  margin-top: 1px;
+  color: var(--slate);
+}
+
+.feed__text {
+  overflow-wrap: anywhere;
+}
+
+.feed__text .ui-money {
+  color: var(--marble);
+}
+
+.feed__line.is-mine {
+  background: var(--brass-wash-faint);
+  box-shadow: inset 2px 0 0 var(--brass-400);
+}
+
+.feed__line.is-mine .feed__icon {
+  color: var(--brass-300);
+}
+
+.feed__line.is-new {
+  color: var(--marble);
+}
+
+.feed__line.is-new::before {
+  content: '';
+  position: absolute;
+  left: -9px;
+  top: 13px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--brass-300);
+}
+
+.feed__quiet {
+  margin: 4px 0 0 34px;
+  font: 400 14px / 1.4 var(--font-text);
+  color: var(--slate);
+}
+
+.feed__seen {
+  margin: 14px 0 4px;
+}
+
+.feed__more {
+  width: calc(100% - 32px);
+  margin: 12px 16px 0;
+}

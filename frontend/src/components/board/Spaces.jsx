@@ -1,4 +1,5 @@
-// The 40 spaces: tile art, colour bands, owner strips, houses and hotels, and the click/hover targets.
+// The 40 spaces: tile art, colour bands, owner discs, mortgage hatching, houses and hotels, and the
+// click/hover targets.
 // Everything except the art is instanced (one draw call per kind) and needs no downloads, so a missing
 // texture only costs its picture (each tile loads, fails and retries on its own).
 import { memo, Suspense, useEffect, useLayoutEffect, useMemo, useRef } from 'react';
@@ -7,14 +8,17 @@ import { useTexture } from '@react-three/drei';
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import useGameStore from '../../store/gameStore';
+import useBoardAnim from '../../store/boardAnim';
 import { PROPERTY_COLORS } from '../../lib/board';
 import { playerColor } from '../../lib/colors';
 import { BOARD, CORNER, SPACES, TILE, toWorld } from './layout';
 import { BOARD_URL, TILE_URLS, setupTextures, tileKey } from './assets';
+import { hatchTexture } from './staging';
 import ErrorBoundary from './ErrorBoundary';
 
-const MORTGAGED_TINT = '#8f8f8f';
-const GLOW = 0.38; // landing highlight opacity
+const MORTGAGED_TINT = '#9AA3B5'; // cool, matches the UI's slate
+const LANDING_FILL = '#EBD3A0'; // --brass-300
+const LANDING_FRAME = '#D7B46A'; // --brass-400
 const _m = new THREE.Matrix4();
 const _p = new THREE.Vector3();
 const _q = new THREE.Quaternion();
@@ -54,8 +58,21 @@ const ART_GEOMETRY = groundPlane();
 const PLAIN_MATERIAL = new THREE.MeshStandardMaterial({ color: '#e2d6bb', roughness: 0.9 });
 const ART = SPACES.map(space => ({ space, url: TILE_URLS[tileKey(space.name)] })).filter(a => a.url); // no art: the plain slab shows
 
+/** Pieces of art the board draws (every tile's, and the centre's): the loading pill in Board.jsx waits for these. */
+export const ART_COUNT = ART.length + 1;
+
+// Counts a piece of art as drawn while the calling component is mounted.
+function useArtDrawn(key) {
+  useEffect(() => {
+    const { markArt } = useBoardAnim.getState();
+    markArt(key, true, ART_COUNT);
+    return () => markArt(key, false, ART_COUNT);
+  }, [key]);
+}
+
 function TileArt({ space, url, mortgaged }) {
   const map = useTexture(url, setupTextures);
+  useArtDrawn(`tile:${space.index}`);
   const aspect = map.image ? map.image.height / map.image.width : 1;
   const { w, h, z } = artRect(space, aspect);
   return (
@@ -77,11 +94,16 @@ function PlainTile({ space }) {
   );
 }
 
+// The plain card for art that failed: nothing more is coming, so it counts as drawn.
+function FailedTile({ space }) {
+  useArtDrawn(`tile:${space.index}`);
+  return <PlainTile space={space} />;
+}
+
 const Tile = memo(function Tile({ space, url, mortgaged }) {
-  const plain = <PlainTile space={space} />;
   return (
-    <ErrorBoundary label={`tile art ${space.name}`} fallback={plain} clearCache={() => useTexture.clear(url)}>
-      <Suspense fallback={plain}>
+    <ErrorBoundary label={`tile art ${space.name}`} fallback={<FailedTile space={space} />} clearCache={() => useTexture.clear(url)}>
+      <Suspense fallback={<PlainTile space={space} />}>
         <TileArt space={space} url={url} mortgaged={mortgaged} />
       </Suspense>
     </ErrorBoundary>
@@ -95,6 +117,7 @@ const clearCenterArt = () => useTexture.clear(BOARD_URL);
 
 function CenterArt() {
   const map = useTexture(BOARD_URL, setupTextures);
+  useArtDrawn('centre');
   return (
     <mesh geometry={ART_GEOMETRY} position={[0, 0.011, 0]} scale={[CENTER_SIZE, 1, CENTER_SIZE]} receiveShadow>
       <meshStandardMaterial map={map} roughness={0.9} />
@@ -105,14 +128,19 @@ function CenterArt() {
 function PlainCenter() {
   return (
     <mesh geometry={ART_GEOMETRY} position={[0, 0.011, 0]} scale={[CENTER_SIZE, 1, CENTER_SIZE]} receiveShadow>
-      <meshStandardMaterial color="#cfd8c8" roughness={0.9} />
+      <meshStandardMaterial color="#ddd3bd" roughness={0.9} />
     </mesh>
   );
 }
 
+function FailedCenter() {
+  useArtDrawn('centre');
+  return <PlainCenter />;
+}
+
 export function Center() {
   return (
-    <ErrorBoundary label="centre art" fallback={<PlainCenter />} clearCache={clearCenterArt}>
+    <ErrorBoundary label="centre art" fallback={<FailedCenter />} clearCache={clearCenterArt}>
       <Suspense fallback={<PlainCenter />}>
         <CenterArt />
       </Suspense>
@@ -148,32 +176,85 @@ const BandsMemo = memo(Bands);
 
 // ---- owners --------------------------------------------------------------------------------------------
 
-function OwnerStrips({ ownersKey }) {
-  const ref = useRef();
+// "A circle is a person, a bar is a place": the owner is a coin on the tile's outer edge, never a strip that
+// could read as one more colour band (a red owner beside the red group's band). The coin is the player colour,
+// unlit so it stays exact, on a darker base of the same hue, so a yellow owner still reads on a yellow tile.
+const DISC_R = TILE.ownerR;
+const DISC_H = 0.07;
+const DISC_FACE = 0.74; // the coloured face, as a share of the radius: the rest is the darker rim
+const _hsl = { h: 0, s: 0, l: 0 };
+
+function rimColor(hex, out) {
+  out.set(hex).getHSL(_hsl);
+  return out.setHSL(_hsl.h, Math.min(1, _hsl.s * 0.9), _hsl.l * 0.42);
+}
+
+function OwnerDiscs({ ownersKey }) {
+  const bases = useRef();
+  const faces = useRef();
   const invalidate = useThree(s => s.invalidate);
-  const geometry = useMemo(() => new THREE.BoxGeometry(1, 1, 1), []);
-  useDispose(geometry);
+  const baseGeometry = useMemo(() => new THREE.CylinderGeometry(DISC_R, DISC_R * 1.04, DISC_H, 32).translate(0, DISC_H / 2, 0), []);
+  const faceGeometry = useMemo(() => new THREE.CircleGeometry(DISC_R * DISC_FACE, 32).rotateX(-Math.PI / 2), []);
+  useDispose(baseGeometry, faceGeometry);
   useLayoutEffect(() => {
-    const mesh = ref.current;
     const owners = ownersKey ? ownersKey.split('|').map(entry => entry.split(':')) : [];
-    mesh.setColorAt(0, _c.set('#ffffff')); // create the colour attribute before the first draw
+    for (const mesh of [bases.current, faces.current]) mesh.setColorAt(0, _c.set('#ffffff')); // colour attribute before the first draw
     owners.forEach(([index, color], i) => {
-      mesh.setMatrixAt(i, spaceMatrix(Number(index), 0, 0.04, TILE.ownerZ, TILE.art, 0.08, TILE.ownerDepth));
-      mesh.setColorAt(i, _c.set(color));
+      bases.current.setMatrixAt(i, spaceMatrix(Number(index), 0, 0.012, TILE.ownerZ));
+      bases.current.setColorAt(i, rimColor(color, _c));
+      faces.current.setMatrixAt(i, spaceMatrix(Number(index), 0, 0.012 + DISC_H + 0.002, TILE.ownerZ));
+      faces.current.setColorAt(i, _c.set(color));
     });
-    mesh.count = owners.length;
-    mesh.instanceMatrix.needsUpdate = true;
-    mesh.instanceColor.needsUpdate = true;
+    for (const mesh of [bases.current, faces.current]) {
+      mesh.count = owners.length;
+      mesh.instanceMatrix.needsUpdate = true;
+      mesh.instanceColor.needsUpdate = true;
+    }
     invalidate();
   }, [ownersKey, invalidate]);
   return (
-    <instancedMesh ref={ref} args={[geometry, undefined, BANDED.length]} frustumCulled={false}>
-      <meshBasicMaterial toneMapped={false} />
+    <>
+      <instancedMesh ref={bases} args={[baseGeometry, undefined, BANDED.length]} frustumCulled={false}>
+        <meshStandardMaterial roughness={0.45} />
+      </instancedMesh>
+      <instancedMesh ref={faces} args={[faceGeometry, undefined, BANDED.length]} frustumCulled={false}>
+        <meshBasicMaterial toneMapped={false} />
+      </instancedMesh>
+    </>
+  );
+}
+
+const OwnerDiscsMemo = memo(OwnerDiscs);
+
+// ---- mortgaged -----------------------------------------------------------------------------------------
+
+// A translucent diagonal hatch over the (tinted) art, so "mortgaged" never rests on the grey tint alone.
+function MortgageHatch({ mortgagedKey }) {
+  const ref = useRef();
+  const invalidate = useThree(s => s.invalidate);
+  const geometry = useMemo(() => groundPlane(), []);
+  const map = useMemo(() => {
+    const texture = hatchTexture();
+    texture.repeat.set(1.5, 1.5);
+    return texture;
+  }, []);
+  useDispose(geometry, map);
+  useLayoutEffect(() => {
+    const mesh = ref.current;
+    const list = mortgagedKey ? mortgagedKey.split(',').map(Number) : [];
+    list.forEach((index, i) => mesh.setMatrixAt(i, spaceMatrix(index, 0, 0.013, TILE.artZ, TILE.art, 1, TILE.art)));
+    mesh.count = list.length;
+    mesh.instanceMatrix.needsUpdate = true;
+    invalidate();
+  }, [mortgagedKey, invalidate]);
+  return (
+    <instancedMesh ref={ref} args={[geometry, undefined, BANDED.length]} frustumCulled={false} renderOrder={1}>
+      <meshBasicMaterial map={map} transparent opacity={0.4} depthWrite={false} toneMapped={false} polygonOffset polygonOffsetFactor={-1} polygonOffsetUnits={-1} />
     </instancedMesh>
   );
 }
 
-const OwnerStripsMemo = memo(OwnerStrips);
+const MortgageHatchMemo = memo(MortgageHatch);
 
 // ---- houses and hotels ---------------------------------------------------------------------------------
 
@@ -224,10 +305,10 @@ function Buildings({ buildingsKey }) {
   return (
     <>
       <instancedMesh ref={houses} args={[houseGeometry, undefined, HOUSE_LIMIT]} castShadow frustumCulled={false}>
-        <meshStandardMaterial color="#2e9d4f" roughness={0.55} />
+        <meshStandardMaterial color="#1E8A4F" roughness={0.55} />
       </instancedMesh>
       <instancedMesh ref={hotels} args={[hotelGeometry, undefined, HOTEL_LIMIT]} castShadow frustumCulled={false}>
-        <meshStandardMaterial color="#c8262b" roughness={0.55} />
+        <meshStandardMaterial color="#C42F2A" roughness={0.55} />
       </instancedMesh>
     </>
   );
@@ -296,45 +377,70 @@ function SpaceTargets() {
 
 // ---- landing highlight ---------------------------------------------------------------------------------
 
-export function LandingGlow({ landing, color }) {
-  const ref = useRef();
+const FILL_OPACITY = 0.3;
+const FRAME_OPACITY = 0.95;
+const FRAME = 0.13; // brass frame width
+
+/** A flat rectangular frame, w x h outside, lying on the board. */
+function frameGeometry(w, h) {
+  const shape = new THREE.Shape().moveTo(-w / 2, -h / 2).lineTo(w / 2, -h / 2).lineTo(w / 2, h / 2).lineTo(-w / 2, h / 2).closePath();
+  const iw = w / 2 - FRAME;
+  const ih = h / 2 - FRAME;
+  shape.holes.push(new THREE.Path().moveTo(-iw, -ih).lineTo(-iw, ih).lineTo(iw, ih).lineTo(iw, -ih).closePath());
+  return new THREE.ShapeGeometry(shape).rotateX(-Math.PI / 2);
+}
+
+// Brass, for whoever landed: a lit frame round the space with a warm wash inside.
+export function LandingGlow({ landing }) {
+  const group = useRef();
+  const fill = useRef();
+  const frame = useRef();
   const started = useRef(-1);
-  const geometry = useMemo(() => groundPlane(), []);
-  useDispose(geometry);
+  const fillGeometry = useMemo(() => groundPlane(), []);
+  const edgeFrame = useMemo(() => frameGeometry(SPACES[1].width - 0.06, CORNER - 0.06), []);
+  const cornerFrame = useMemo(() => frameGeometry(CORNER - 0.06, CORNER - 0.06), []);
+  useDispose(fillGeometry, edgeFrame, cornerFrame);
   const invalidate = useThree(s => s.invalidate);
 
   useLayoutEffect(() => {
-    const mesh = ref.current;
+    const g = group.current;
     if (!landing) {
-      mesh.visible = false; // reset (new game) mid-glow
+      g.visible = false; // reset (new game) mid-glow
       invalidate();
       return;
     }
     const space = SPACES[landing.position];
     if (!space) return;
-    mesh.matrix.copy(spaceMatrix(landing.position, 0, 0.015, 0, space.width - 0.06, 1, CORNER - 0.06));
-    mesh.matrixWorldNeedsUpdate = true;
-    mesh.material.color.set(color || '#ffffff');
+    g.matrix.copy(spaceMatrix(landing.position, 0, 0.015, 0));
+    g.matrixWorldNeedsUpdate = true;
+    fill.current.scale.set(space.width - 0.06, 1, CORNER - 0.06);
+    frame.current.geometry = space.corner ? cornerFrame : edgeFrame;
     started.current = -1;
     invalidate();
-  }, [landing, color, invalidate]);
+  }, [landing, edgeFrame, cornerFrame, invalidate]);
 
   useFrame((state) => {
-    const mesh = ref.current;
-    if (!landing || !mesh) return;
+    const g = group.current;
+    if (!landing || !g) return;
     const now = state.clock.elapsedTime;
     if (started.current < 0) started.current = now;
     const t = now - started.current;
-    const opacity = t < 0.25 ? (t / 0.25) * GLOW : t < 2.6 ? GLOW : Math.max(0, GLOW * (1 - (t - 2.6) / 0.6));
-    mesh.material.opacity = opacity;
-    mesh.visible = opacity > 0.001;
+    const k = t < 0.25 ? t / 0.25 : t < 2.6 ? 1 : Math.max(0, 1 - (t - 2.6) / 0.6);
+    fill.current.material.opacity = k * FILL_OPACITY;
+    frame.current.material.opacity = k * FRAME_OPACITY;
+    g.visible = k > 0.001;
     if (t < 3.3) state.invalidate();
   });
 
   return (
-    <mesh ref={ref} geometry={geometry} matrixAutoUpdate={false} visible={false} renderOrder={1}>
-      <meshBasicMaterial transparent opacity={0} depthWrite={false} toneMapped={false} />
-    </mesh>
+    <group ref={group} matrixAutoUpdate={false} visible={false}>
+      <mesh ref={fill} geometry={fillGeometry} renderOrder={1}>
+        <meshBasicMaterial color={LANDING_FILL} transparent opacity={0} depthWrite={false} toneMapped={false} />
+      </mesh>
+      <mesh ref={frame} geometry={edgeFrame} position-y={0.001} renderOrder={1}>
+        <meshBasicMaterial color={LANDING_FRAME} transparent opacity={0} depthWrite={false} toneMapped={false} />
+      </mesh>
+    </group>
   );
 }
 
@@ -365,7 +471,8 @@ function Spaces() {
     <>
       {ART.map(({ space, url }) => <Tile key={space.index} space={space} url={url} mortgaged={mortgaged.has(space.index)} />)}
       <BandsMemo />
-      <OwnerStripsMemo ownersKey={ownersKey} />
+      <MortgageHatchMemo mortgagedKey={mortgagedKey} />
+      <OwnerDiscsMemo ownersKey={ownersKey} />
       <BuildingsMemo buildingsKey={buildingsKey} />
       <SpaceTargets />
     </>

@@ -1,5 +1,3 @@
-import { createElement } from 'react';
-
 // Player tokens: the six 3D models in src/assets/tokens. Older accounts may still carry the original Monopoly
 // names, which map onto the same models.
 //
@@ -58,17 +56,4 @@ export function tokenLabel(tokenType) {
 /** The glyph's path data (32-unit grid, evenodd). */
 export function tokenGlyph(tokenType) {
   return TOKENS[tokenKey(tokenType)].glyph;
-}
-
-/**
- * @deprecated TEMPORARY shim so screens not yet restyled keep building: it no longer returns an emoji but a
- * 1em inline SVG glyph in the player's colour (var(--pc)) or the text colour. Replace each call with
- * <Medallion> or <TokenGlyph> (components/ui/Medallion.jsx), then delete this function.
- */
-export function tokenEmoji(tokenType) {
-  return createElement(
-    'svg',
-    { className: 'ui-glyph ui-glyph--inline', viewBox: TOKEN_GLYPH_VIEWBOX, width: '1em', height: '1em', 'aria-hidden': true, focusable: 'false' },
-    createElement('path', { d: tokenGlyph(tokenType), fillRule: 'evenodd' })
-  );
 }

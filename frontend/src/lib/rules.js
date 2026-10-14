@@ -103,6 +103,75 @@ export function standings(players, properties) {
     .sort((a, b) => (a.player.is_bankrupt - b.player.is_bankrupt) || b.worth - a.worth);
 }
 
+/** Who a list of debts is owed to, as names in order of appearance: ['youngeun', 'the bank']. */
+export function creditorNames(debts, players, me) {
+  const ids = [...new Set((debts || []).map(d => d.creditorId ?? null))];
+  return ids.map(id => {
+    if (id == null) return 'the bank';
+    if (me && id === me.id) return 'you';
+    return players.find(p => p.id === id)?.username || 'a player';
+  });
+}
+
+/** "youngeun", "youngeun and the bank", "jack, seabass and the bank". */
+export function joinNames(names) {
+  if (names.length <= 1) return names[0] || '';
+  return `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`;
+}
+
+/** A debt's reason as a row label: "rent for Gramercy Park" → "Rent for Gramercy Park". */
+export function debtLabel(debt) {
+  const reason = (debt?.reason || '').trim();
+  return reason ? `${reason[0].toUpperCase()}${reason.slice(1)}` : 'Owed';
+}
+
+/**
+ * The stops of a property's colour group in board order, for the buy prompt's strip map:
+ * [{ property, owner (player or null), here (the one being offered) }].
+ */
+export function groupStops(property, properties, players) {
+  const key = groupKey(property);
+  return properties
+    .filter(p => groupKey(p) === key)
+    .sort((a, b) => a.position_on_board - b.position_on_board)
+    .map(p => ({
+      property: p,
+      owner: p.owner_id != null ? players.find(pl => pl.id === p.owner_id) ?? null : null,
+      here: p.id === property.id
+    }));
+}
+
+/** The three numbers that matter when deciding to buy: [{ label, value }]. */
+export function keyRents(property) {
+  const v = Array.isArray(property?.rent_values) ? property.rent_values : [];
+  if (property?.property_type === 'railroad') {
+    return [
+      { label: 'Rent', value: money(v[0]) },
+      { label: 'With 2 stations', value: money(v[1]) },
+      { label: 'With all 4', value: money(v[v.length - 1]) }
+    ];
+  }
+  if (property?.property_type === 'utility') {
+    return [
+      { label: 'Rent', value: `${v[0] ?? 4}× dice` },
+      { label: 'With both', value: `${v[1] ?? 10}× dice` }
+    ];
+  }
+  return [
+    { label: 'Rent', value: money(v[0]) },
+    { label: 'With the full set', value: money(v[1]) },
+    { label: 'With a hotel', value: money(v[6]) }
+  ];
+}
+
+/** Which day of the game a moment falls on (1 on the day it started). */
+export function gameDay(startedAt, at) {
+  const start = Date.parse(startedAt);
+  const when = typeof at === 'number' ? at : Date.parse(at);
+  if (!Number.isFinite(start) || !Number.isFinite(when)) return null;
+  return Math.max(1, Math.floor((when - start) / 86400000) + 1);
+}
+
 // A player's properties grouped by set, sets in board order: [{ key, items, owned, total, complete }].
 export function groupHoldings(ownerId, properties) {
   return GROUP_ORDER.map(key => {

@@ -1,51 +1,14 @@
 /*
- * Shared look for the peripheral screens (Login, Lobby, Admin, Chat, Trade).
- *
- * Colors read the app tokens from index.css when they exist and fall back to the original palette, so
- * these screens stay on theme while index.css is being rewritten. Buttons set every property themselves
- * (through --btn-* variables) because index.css styles bare `button` elements globally.
+ * Shared bits for the peripheral screens (Login, Lobby, Admin, Chat, Trade), on the Midnight Deco tokens
+ * (src/index.css). Buttons, fields, tags, wells and the rest come from the global `ui-*` classes
+ * (src/components/ui/ui.css); this module only holds what those do not: a list reset, status notes and the
+ * inline confirm step.
  */
 
 .theme {
-  --pm-bg: var(--bg-primary, #0A3D2C);
-  --pm-surface: var(--bg-secondary, #144634);
-  --pm-card: var(--bg-card, #1E5742);
-  --pm-raised: var(--bg-hover, #27684F);
-  --pm-border: var(--border-color, #2D7A5A);
-  --pm-text: var(--text-primary, #FFFFFF);
-  --pm-text-2: var(--text-secondary, #D0E9DC);
-  --pm-muted: #AECBBC; /* 4.8:1 on the card color, unlike the older #9DBFAE */
-  --pm-gold: var(--gold, var(--monopoly-gold, #D4AF37));
-  --pm-gold-soft: #F1D67A;
-  --pm-ink: #10241B; /* text on gold */
-  --pm-danger: #B3261E;
-  --pm-danger-text: #FF9A8F;
-  --pm-success: #7BD88F;
-  --pm-info: #8EC5FF;
-  --pm-radius: 10px;
-  --pm-radius-sm: 6px;
-  --pm-radius-lg: 16px;
-
-  color: var(--pm-text);
-  font-family: inherit;
-  line-height: 1.45;
-}
-
-/* index.css gives bare headings, paragraphs and lists margins, colors and shadows. */
-.theme :where(h1, h2, h3, h4, p, ul, ol, li, dl, dt, dd, figure, fieldset, legend) {
-  margin: 0;
-  padding: 0;
-}
-
-.theme :where(h1, h2, h3, h4) {
-  color: inherit;
-  text-shadow: none;
-  letter-spacing: normal;
-  line-height: 1.2;
-}
-
-.theme :where(p) {
-  color: inherit;
+  color: var(--marble);
+  font-family: var(--font-text);
+  line-height: var(--lh-body);
 }
 
 .theme :where(ul, ol) {
@@ -57,296 +20,76 @@
   min-width: 0;
 }
 
-/* ---- buttons ---------------------------------------------------------------------------------------- */
-
-.btn {
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.4rem;
-  min-height: var(--btn-min-h, 44px);
-  padding: var(--btn-pad, 0.55rem 1rem);
-  margin: 0;
-  border: 2px solid var(--btn-border, var(--pm-border));
-  border-radius: var(--btn-radius, var(--pm-radius));
-  background: var(--btn-bg, var(--pm-raised));
-  color: var(--btn-fg, var(--pm-text));
-  font: inherit;
-  font-size: var(--btn-fs, 1rem);
-  font-weight: 600;
-  line-height: 1.2;
-  letter-spacing: normal;
-  text-transform: none;
-  text-align: center;
-  text-decoration: none;
-  box-shadow: none;
-  transform: none;
-  overflow: visible;
-  cursor: pointer;
-  -webkit-tap-highlight-color: transparent;
-  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
-}
-
-.btn::before {
-  content: none;
-}
-
-.btn:hover,
-.btn:active {
-  transform: none;
-  box-shadow: none;
-  border-color: var(--btn-border, var(--pm-border));
-  color: var(--btn-fg, var(--pm-text));
-  text-decoration: none;
-}
-
-@media (hover: hover) {
-  .btn:hover:not(:disabled) {
-    background: var(--btn-bg-hover, #317A5D);
-  }
-}
-
-.btn:active:not(:disabled) {
-  background: var(--btn-bg-hover, #317A5D);
-}
-
-.btn:focus-visible {
-  outline: 3px solid var(--pm-gold);
-  outline-offset: 2px;
-}
-
-.btn:disabled,
-.btn:disabled:hover {
-  background: var(--btn-bg, var(--pm-raised));
-  border-color: var(--btn-border, var(--pm-border));
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.primary {
-  --btn-bg: var(--pm-gold);
-  --btn-bg-hover: #E2C158;
-  --btn-border: var(--pm-gold);
-  --btn-fg: var(--pm-ink);
-}
-
-.ghost {
-  --btn-bg: transparent;
-  --btn-bg-hover: rgba(255, 255, 255, 0.08);
-  --btn-border: transparent;
-  --btn-fg: var(--pm-text-2);
-}
-
-.outline {
-  --btn-bg: transparent;
-  --btn-bg-hover: rgba(212, 175, 55, 0.12);
-  --btn-border: var(--pm-gold);
-  --btn-fg: var(--pm-gold-soft);
-}
-
-.danger {
-  --btn-bg: var(--pm-danger);
-  --btn-bg-hover: #C9372E;
-  --btn-border: var(--pm-danger);
-  --btn-fg: #FFFFFF;
-}
-
-.dangerOutline {
-  --btn-bg: transparent;
-  --btn-bg-hover: rgba(229, 115, 115, 0.14);
-  --btn-border: #E57373;
-  --btn-fg: var(--pm-danger-text);
-}
-
-.small {
-  --btn-min-h: 36px;
-  --btn-pad: 0.3rem 0.75rem;
-  --btn-fs: 0.9rem;
-}
-
-.block {
-  width: 100%;
-}
-
-/* ---- form fields ------------------------------------------------------------------------------------ */
-
-.field {
-  display: grid;
-  gap: 0.35rem;
-}
-
-.label {
-  display: block;
-  color: var(--pm-text-2);
-  font-size: 0.9rem;
-  font-weight: 600;
-}
-
-.input {
-  display: block;
-  width: 100%;
-  min-height: 44px;
-  margin: 0;
-  padding: 0.6rem 0.8rem;
-  border: 2px solid var(--pm-border);
-  border-radius: var(--pm-radius-sm);
-  background: rgba(0, 0, 0, 0.22);
-  color: var(--pm-text);
-  font: inherit;
-  font-size: max(16px, 1rem); /* below 16px iOS zooms the page on focus */
-  line-height: 1.3;
-  box-shadow: none;
-  transition: border-color 0.15s ease;
-}
-
-.input::placeholder {
-  color: #8FB3A1;
-}
-
-.input:focus {
-  outline: none;
-  border-color: var(--pm-gold);
-  background: rgba(0, 0, 0, 0.3);
-  box-shadow: none;
-}
-
-.input:focus-visible {
-  box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.35);
-}
-
-.input[aria-invalid='true'] {
-  border-color: #E57373;
-}
-
-.hint {
-  color: var(--pm-muted);
-  font-size: 0.85rem;
-}
-
-.errorText {
-  color: var(--pm-danger-text);
-  font-size: 0.9rem;
-}
-
-.successText {
-  color: var(--pm-success);
-  font-size: 0.9rem;
-}
-
-/* ---- surfaces and labels ---------------------------------------------------------------------------- */
-
-.panel {
-  background: var(--pm-card);
-  border: 1px solid var(--pm-border);
-  border-radius: var(--pm-radius-lg);
-}
-
-.badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.25rem;
-  padding: 0.1rem 0.5rem;
-  border-radius: 999px;
-  font-size: 0.75rem;
-  font-weight: 700;
-  line-height: 1.5;
-  white-space: nowrap;
-  vertical-align: middle;
-}
-
-.badgeGold {
-  background: rgba(212, 175, 55, 0.12);
-  border: 1px solid rgba(212, 175, 55, 0.55);
-  color: var(--pm-gold-soft);
-}
-
-.badgeInfo {
-  background: rgba(142, 197, 255, 0.1);
-  border: 1px solid rgba(142, 197, 255, 0.5);
-  color: var(--pm-info);
-}
-
-.badgeMuted {
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  color: var(--pm-text-2);
-}
+/* ---- status notes: a calm well, a stop-ruled error, a go-ruled success ------------------------------- */
 
 .notice {
-  padding: 0.65rem 0.85rem;
-  border-radius: var(--pm-radius);
-  border: 1px solid var(--pm-border);
-  background: rgba(0, 0, 0, 0.18);
-  color: var(--pm-text-2);
-  font-size: 0.95rem;
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  padding: 10px 12px;
+  border-radius: var(--r-control);
+  background: var(--well);
+  color: var(--limestone);
+  font: 400 14px / 1.4 var(--font-text);
+}
+
+.notice > :global(.ui-icon) {
+  flex: none;
+  margin-top: 1px;
+  color: var(--slate);
 }
 
 .noticeError {
-  border-color: rgba(229, 115, 115, 0.6);
-  background: rgba(179, 38, 30, 0.14);
-  color: var(--pm-danger-text);
+  color: var(--marble);
+  box-shadow: inset 2px 0 0 var(--stop);
+}
+
+.noticeError > :global(.ui-icon) {
+  color: var(--stop);
 }
 
 .noticeSuccess {
-  border-color: rgba(123, 216, 143, 0.5);
-  background: rgba(123, 216, 143, 0.08);
-  color: var(--pm-success);
+  color: var(--marble);
+  box-shadow: inset 2px 0 0 var(--go);
 }
 
-.srOnly {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  padding: 0;
-  margin: -1px;
-  overflow: hidden;
-  clip: rect(0, 0, 0, 0);
-  white-space: nowrap;
-  border: 0;
+.noticeSuccess > :global(.ui-icon) {
+  color: var(--go);
 }
 
-.logo {
-  display: block;
-  width: 168px;
-  max-width: 60%;
-  height: auto;
-}
-
-/* ---- inline confirm step (replaces window.confirm) ------------------------------------------------- */
+/* ---- inline confirm step (ConfirmStep.jsx): a well with the question and two buttons ----------------- */
 
 .confirm {
   display: grid;
-  gap: 0.6rem;
-  padding: 0.75rem;
-  border: 1px solid rgba(229, 115, 115, 0.55);
-  border-radius: var(--pm-radius);
-  background: rgba(0, 0, 0, 0.25);
+  gap: var(--space-2);
+  padding: 14px;
+  border-radius: var(--r-control);
+  background: var(--well);
+  box-shadow: inset 0 0 0 1px var(--stop-line);
 }
 
 .confirmPrimary {
-  border-color: rgba(212, 175, 55, 0.6);
+  background: var(--brass-wash-faint);
+  box-shadow: inset 0 0 0 1px var(--brass-600);
 }
 
 .confirmMessage {
-  color: var(--pm-text);
-  font-weight: 600;
+  color: var(--marble);
+  font: 600 var(--fs-label) / 1.3 var(--font-text);
 }
 
 .confirmDetail {
-  color: var(--pm-text-2);
-  font-size: 0.9rem;
+  color: var(--limestone);
+  font: 400 14px / 1.4 var(--font-text);
 }
 
 .confirmActions {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.5rem;
+  gap: var(--space-2);
+  margin-top: var(--space-1);
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .btn,
-  .input {
-    transition: none;
-  }
+.confirmActions > :global(.ui-btn:not(.ui-btn--ghost)) {
+  flex: 1 1 auto;
 }

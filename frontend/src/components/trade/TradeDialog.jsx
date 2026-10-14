@@ -3,6 +3,7 @@ import { useShallow } from 'zustand/react/shallow';
 import useGameStore, { selectMyPlayer } from '../../store/gameStore';
 import { api } from '../../lib/api';
 import { money } from '../../lib/format';
+import Icon from '../ui/Icon';
 import OfferCard from './OfferCard';
 import TradeBuilder from './TradeBuilder';
 import TradeHistory from './TradeHistory';
@@ -104,6 +105,18 @@ export default function TradeDialog({ options, onClose }) {
     dialogRef.current?.focus();
     return () => {
       if (opener && typeof opener.focus === 'function' && document.contains(opener)) opener.focus();
+    };
+  }, []);
+
+  // Full screen on a phone: the iOS status bar takes the sheet's colour while it is open.
+  useEffect(() => {
+    const meta = document.querySelector('meta[name="theme-color"]');
+    if (!meta) return undefined;
+    const before = meta.getAttribute('content');
+    const raised = getComputedStyle(document.documentElement).getPropertyValue('--raised').trim();
+    if (raised) meta.setAttribute('content', raised);
+    return () => {
+      if (before) meta.setAttribute('content', before);
     };
   }, []);
 
@@ -232,13 +245,15 @@ export default function TradeDialog({ options, onClose }) {
   const counts = { received: data ? received.length : incomingTradeCount || 0, sent: sent.length };
 
   function renderOffers(list, kind) {
-    if (!data && !loadError) return <p className={ui.hint}>Loading trades…</p>;
+    if (!data && !loadError) return <Loading />;
     if (!list.length) {
       return (
         <div className={s.empty}>
+          <Icon name="trade" size={28} />
           <p>{kind === 'received' ? 'No offers are waiting for you.' : 'You have no open offers.'}</p>
           {gameStatus === 'in_progress' && !me?.is_bankrupt && (
-            <button type="button" className={`${ui.btn} ${ui.outline}`} onClick={() => setTab('new')}>
+            <button type="button" className="ui-btn ui-btn--secondary" onClick={() => setTab('new')}>
+              <Icon name="plus" size={20} />
               Make an offer
             </button>
           )}
@@ -257,6 +272,8 @@ export default function TradeDialog({ options, onClose }) {
           view={view}
           other={playersById.get(view.other.playerId)}
           byId={byId}
+          properties={safeProperties}
+          myPlayerId={me?.id}
           problems={problems}
           busy={busyAction}
           highlight={trade.id === focusId}
@@ -274,18 +291,21 @@ export default function TradeDialog({ options, onClose }) {
 
   function renderBuilder() {
     if (gameStatus !== 'in_progress') {
-      return <p className={ui.notice}>Trades open once the game has started.</p>;
+      return <p className={ui.notice}><Icon name="info" size={18} />Trades open once the game has started.</p>;
     }
     if (me.is_bankrupt) {
-      return <p className={ui.notice}>You are bankrupt, so you can no longer trade.</p>;
+      return <p className={ui.notice}><Icon name="info" size={18} />You are bankrupt, so you can no longer trade.</p>;
     }
     if (counterId && !data && !loadError) {
-      return <p className={ui.hint}>Loading the offer…</p>;
+      return <Loading text="Loading the offer…" />;
     }
     return (
       <>
         {counterGone && (
-          <p className={ui.notice} role="status">That offer is no longer open, so there is nothing to counter. You can make a new offer instead.</p>
+          <p className={`${ui.notice} ${s.gone}`} role="status">
+            <Icon name="info" size={18} />
+            That offer is no longer open, so there is nothing to counter. You can make a new offer instead.
+          </p>
         )}
         <TradeBuilder
           key={counterTrade ? `counter-${counterTrade.id}` : `new-${builderRound}`}
@@ -314,22 +334,29 @@ export default function TradeDialog({ options, onClose }) {
         onKeyDown={handleKeyDown}
       >
         <header className={s.head}>
-          <h2 id={`${id}-title`} className={s.title}>Trade</h2>
-          <span className={s.headCash}>{me ? `You have ${money(me.money)}` : ''}</span>
-          <button type="button" className={`${ui.btn} ${ui.ghost} ${s.close}`} onClick={onClose} aria-label="Close trades">
-            ✕
+          <div className={s.headText}>
+            <h2 id={`${id}-title`} className={s.title}>Trade</h2>
+            {me && (
+              <p className={s.headCash}>
+                You have <span className="ui-money">{money(me.money)}</span>
+              </p>
+            )}
+          </div>
+          <button type="button" className={`ui-btn ui-btn--icon ${s.close}`} onClick={onClose} aria-label="Close trades">
+            <Icon name="close" size={20} />
           </button>
         </header>
 
         {!canTrade ? (
           <div className={s.body}>
             <p className={ui.notice}>
+              <Icon name="eye" size={18} />
               {isSpectator ? 'Spectators can follow trades in the game log, but only players can trade.' : 'Only players in the game can trade.'}
             </p>
           </div>
         ) : (
           <>
-            <div className={s.tabs} role="tablist" aria-label="Trades" onKeyDown={handleTabKey}>
+            <div className={`ui-seg ${s.tabs}`} role="tablist" aria-label="Trades" onKeyDown={handleTabKey}>
               {TABS.map(t => {
                 const selected = tab === t.id;
                 const count = counts[t.id];
@@ -343,11 +370,14 @@ export default function TradeDialog({ options, onClose }) {
                     aria-selected={selected}
                     aria-controls={`${id}-panel-${t.id}`}
                     tabIndex={selected ? 0 : -1}
-                    className={`${ui.btn} ${s.tab}`}
                     onClick={() => setTab(t.id)}
                   >
                     {t.label}
-                    {count > 0 && <span className={s.tabCount}>{count}</span>}
+                    {count > 0 && (
+                      t.id === 'received'
+                        ? <span className="ui-badge">{count}<span className="sr-only"> waiting</span></span>
+                        : <span className={s.tabCount}>{count}<span className="sr-only"> open</span></span>
+                    )}
                   </button>
                 );
               })}
@@ -356,8 +386,10 @@ export default function TradeDialog({ options, onClose }) {
             <div className={s.body} aria-busy={!data && !loadError}>
               {loadError && (
                 <div className={`${ui.notice} ${ui.noticeError} ${s.loadError}`} role="alert">
-                  <span>Could not load trades: {loadError}</span>
-                  <button type="button" className={`${ui.btn} ${ui.small} ${ui.ghost}`} onClick={() => setReload(n => n + 1)}>
+                  <Icon name="warning" size={18} />
+                  <span className={s.loadErrorText}>Could not load trades: {loadError}</span>
+                  <button type="button" className="ui-btn ui-btn--sm ui-btn--ghost" onClick={() => setReload(n => n + 1)}>
+                    <Icon name="refresh" size={18} />
                     Try again
                   </button>
                 </div>
@@ -370,14 +402,14 @@ export default function TradeDialog({ options, onClose }) {
                   role="tabpanel"
                   aria-labelledby={`${id}-tab-${t.id}`}
                   hidden={tab !== t.id}
-                  className={s.panel}
+                  className={`${s.panel} ${t.id === 'new' ? s.panelNew : ''}`}
                 >
                   {t.id === 'received' && renderOffers(received, 'received')}
                   {t.id === 'sent' && renderOffers(sent, 'sent')}
                   {t.id === 'new' && renderBuilder()}
                   {t.id === 'history' && (
                     !data && !loadError
-                      ? <p className={ui.hint}>Loading trades…</p>
+                      ? <Loading />
                       : <TradeHistory trades={history} myUserId={myUserId} byId={byId} playersById={playersById} focusId={focusId} />
                   )}
                 </div>
@@ -387,5 +419,14 @@ export default function TradeDialog({ options, onClose }) {
         )}
       </div>
     </div>
+  );
+}
+
+function Loading({ text = 'Loading trades…' }) {
+  return (
+    <p className={s.loading} role="status">
+      <span className="ui-spinner" aria-hidden="true" />
+      {text}
+    </p>
   );
 }

@@ -1,0 +1,151 @@
+/* Past games: flush rows split by hairlines; each folds open to its standings. */
+
+.past {
+  margin-top: 28px;
+}
+
+.title {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: var(--space-2);
+  padding-bottom: 4px;
+  font: 600 22px / 1 var(--font-display);
+  letter-spacing: 0.01em;
+}
+
+.count {
+  font: 500 14px / 1 var(--font-text);
+  font-variant-numeric: tabular-nums lining-nums;
+  color: var(--slate);
+}
+
+.none {
+  padding: 12px 0;
+  border-top: 1px solid var(--seam);
+  font: 400 14px / 1.4 var(--font-text);
+  color: var(--slate);
+}
+
+.games {
+  border-top: 1px solid var(--seam);
+}
+
+.game {
+  border-bottom: 1px solid var(--seam);
+}
+
+.summary {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  align-items: center;
+  column-gap: 10px;
+  min-height: 56px;
+  padding: 8px 0;
+  list-style: none;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.summary::-webkit-details-marker {
+  display: none;
+}
+
+.summary:focus-visible {
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+.crown {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  color: var(--brass-300);
+  box-shadow: inset 0 0 0 1px var(--brass-600);
+}
+
+.winner {
+  min-width: 0;
+  font: 400 15px / 1.25 var(--font-text);
+  color: var(--limestone);
+}
+
+.winner strong {
+  font-weight: 600;
+  color: var(--marble);
+}
+
+.played {
+  display: block;
+  margin-top: 2px;
+  font: 400 var(--fs-meta) / 1.2 var(--font-text);
+  color: var(--slate);
+}
+
+.when {
+  font: 500 var(--fs-meta) / 1 var(--font-text);
+  font-variant-numeric: tabular-nums lining-nums;
+  color: var(--slate);
+  white-space: nowrap;
+}
+
+.chev {
+  color: var(--slate);
+  transition: transform var(--dur-quick) ease;
+}
+
+.details[open] .chev {
+  transform: rotate(180deg);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .summary:hover .winner strong {
+    color: var(--brass-300);
+  }
+}
+
+.standings {
+  padding: 0 0 12px 40px;
+}
+
+.standing {
+  display: grid;
+  grid-template-columns: 14px auto minmax(0, 1fr) auto;
+  align-items: center;
+  column-gap: 10px;
+  min-height: 38px;
+}
+
+.rank {
+  font: 600 17px / 1 var(--font-display);
+  color: var(--brass-300);
+  text-align: center;
+}
+
+.name {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  font: 500 15px / 1.2 var(--font-text);
+  color: var(--marble);
+  overflow-wrap: anywhere;
+}
+
+.worth {
+  font-size: 15px;
+  color: var(--limestone);
+}
+
+.out {
+  font: 500 var(--fs-meta) / 1 var(--font-text);
+  color: var(--slate);
+}
+
+.more {
+  margin-top: 4px;
+  margin-left: -12px;
+  color: var(--brass-300);
+}

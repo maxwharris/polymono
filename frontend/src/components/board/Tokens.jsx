@@ -5,14 +5,15 @@ import { useFrame, useThree } from '@react-three/fiber';
 import { Html } from '@react-three/drei';
 import { useShallow } from 'zustand/react/shallow';
 import * as THREE from 'three';
-import { toCreasedNormals } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
-import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
+import { mergeGeometries, toCreasedNormals } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import useGameStore, { selectCurrentPlayer } from '../../store/gameStore';
 import useBoardAnim from '../../store/boardAnim';
 import { playerColor } from '../../lib/colors';
-import { JAIL, restYaw, spotPosition } from './layout';
+import { JAIL, restYaw, spotPosition, spotScale } from './layout';
 import { clearTokenModel, tokenUrl, useTokenModel } from './assets';
 import { tokens as registry } from './registry';
+import { useEnvironment } from './environment';
+import { useReducedMotion } from './motion';
 import ErrorBoundary from './ErrorBoundary';
 import css from './board.module.css';
 
@@ -20,6 +21,22 @@ const SCALE = 0.48; // models are ~1.9 long: 0.9 on the board
 const HOP_HEIGHT = 0.55;
 const JUMP_HEIGHT = 4;
 const CLICK_SLOP = 8;
+// The base every piece stands on: a brass-topped puck with a player-coloured rim, so a piece reads as a piece on
+// busy art and its colour shows from straight above.
+const PUCK_R = 0.44;
+const PUCK_H = 0.07;
+const RING_IN = 0.5; // the turn ring, outside the puck
+const RING_OUT = 0.62;
+const HAIRLINE = 0.035; // brass, outside the turn ring
+const BRASS_LINE = '#D7B46A'; // --brass-400
+const BRASS_PUCK = '#B08A3C'; // a deeper brass than the inlay: it sits on cream tiles, under a white environment
+
+// On a small canvas the whole-board overview draws a piece about 11px across, lost on the art. Pieces grow
+// there, to about 15px at 375px wide (at most 1.4 times), and shared spots spread out to fit them
+// (layout.js: spotScale). Canvases from about 550px wide, the desktop board among them, keep scale 1. It follows
+// the width only, so a turn panel changing the canvas height never resizes the pieces.
+const MAX_PIECE_SCALE = 1.4;
+const pieceScaleFor = width => Math.min(MAX_PIECE_SCALE, Math.max(1, Math.round((528 / Math.max(1, width - 20)) * 20) / 20));
 
 const noRaycast = () => null;
 const _to = new THREE.Vector3();
@@ -29,22 +46,6 @@ const ease = t => (t < 0.5 ? 2 * t * t : 1 - (-2 * t + 2) ** 2 / 2);
 const wrapAngle = a => Math.atan2(Math.sin(a), Math.cos(a));
 
 // ---- shared resources ----------------------------------------------------------------------------------
-
-// A zero-download environment map for the metal tokens only (the tiles keep plain lighting).
-// A lost-and-restored WebGL context empties it (it only ever lived on the GPU): see useContextRestores.
-const envMaps = new WeakMap();
-function environmentFor(gl) {
-  let env = envMaps.get(gl);
-  if (!env) {
-    const pmrem = new THREE.PMREMGenerator(gl);
-    const room = new RoomEnvironment();
-    env = pmrem.fromScene(room, 0.04).texture;
-    room.dispose?.();
-    pmrem.dispose();
-    envMaps.set(gl, env);
-  }
-  return env;
-}
 
 // The lowpoly GLBs carry smooth normals; re-crease them once per model so hard edges stay crisp.
 const creased = new WeakMap();
@@ -64,35 +65,19 @@ function geometriesOf(scene) {
   return list;
 }
 
-/** Counts WebGL context restores (iOS drops the context in the background), after dropping the stale env map. */
-function useContextRestores(gl) {
-  const [restores, setRestores] = useState(0);
-  useEffect(() => {
-    const canvas = gl.domElement;
-    const onRestored = () => {
-      envMaps.delete(gl);
-      setRestores(n => n + 1);
-    };
-    canvas.addEventListener('webglcontextrestored', onRestored);
-    return () => canvas.removeEventListener('webglcontextrestored', onRestored);
-  }, [gl]);
-  return restores;
-}
-
 // ---- parts ---------------------------------------------------------------------------------------------
 
 function TokenModel({ url, color }) {
   const { scene } = useTokenModel(url);
-  const gl = useThree(s => s.gl);
-  const restores = useContextRestores(gl);
+  const env = useEnvironment();
   const geometries = useMemo(() => geometriesOf(scene), [scene]);
   const material = useMemo(
-    () => new THREE.MeshStandardMaterial({ color, metalness: 0.55, roughness: 0.32, envMap: environmentFor(gl), envMapIntensity: 0.9 }),
-    [color, gl, restores] // eslint-disable-line react-hooks/exhaustive-deps
+    () => new THREE.MeshStandardMaterial({ color, metalness: 0.55, roughness: 0.32, envMap: env, envMapIntensity: 0.9 }),
+    [color, env]
   );
   useEffect(() => () => material.dispose(), [material]);
   return (
-    <group scale={SCALE}>
+    <group scale={SCALE} position-y={PUCK_H}>
       {geometries.map((geometry, i) => (
         <mesh key={i} geometry={geometry} material={material} castShadow raycast={noRaycast} />
       ))}
@@ -100,20 +85,85 @@ function TokenModel({ url, color }) {
   );
 }
 
-function Puck({ color }) {
+// Stands in for the model while it loads, or if it fails: a plain pawn in the player's colour.
+function Pawn({ color }) {
   return (
-    <mesh position-y={0.14} castShadow raycast={noRaycast}>
-      <cylinderGeometry args={[0.3, 0.34, 0.28, 24]} />
+    <mesh position-y={PUCK_H + 0.14} castShadow raycast={noRaycast}>
+      <cylinderGeometry args={[0.24, 0.3, 0.28, 24]} />
       <meshStandardMaterial color={color} metalness={0.3} roughness={0.5} />
     </mesh>
   );
 }
 
-// Under the player whose turn it is; pulses for two seconds when the turn starts.
+// The puck in one draw call: vertex colours paint the side in the player's colour and the top in brass, under
+// one metal material (the bottom cap is dropped: it is never seen).
+const PUCK_SEGMENTS = 40;
+const _rim = new THREE.Color();
+const _brass = new THREE.Color(BRASS_PUCK);
+
+function puckGeometry(color) {
+  const g = new THREE.CylinderGeometry(PUCK_R, PUCK_R + 0.02, PUCK_H, PUCK_SEGMENTS).translate(0, PUCK_H / 2, 0);
+  const [, top] = g.groups; // torso, top cap, bottom cap
+  g.setIndex(Array.from(g.index.array).slice(0, top.start + top.count));
+  g.clearGroups();
+  const torso = 2 * (PUCK_SEGMENTS + 1); // the torso's vertices come first
+  _rim.set(color);
+  const colors = new Float32Array(g.attributes.position.count * 3);
+  for (let i = 0; i < g.attributes.position.count; i++) (i < torso ? _rim : _brass).toArray(colors, i * 3);
+  g.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+  return g;
+}
+
+// The bold puck, for small canvases, where a piece is about 15px across and the plain one melts into the cream
+// art: the same footprint, but the side tapers so it shows from above, in a dark shade of the player's colour
+// (an outline, as on the owners' discs), and the top carries a band of their colour round the brass.
+const BOLD_TOP_R = 0.39;
+const BOLD_BAND = 0.1;
+const _band = new THREE.Color();
+const _hsl = {};
+
+function paint(geometry, color) {
+  const colors = new Float32Array(geometry.attributes.position.count * 3);
+  for (let i = 0; i < geometry.attributes.position.count; i++) color.toArray(colors, i * 3);
+  geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+  return geometry;
+}
+
+function boldPuckGeometry(color) {
+  _band.set(color).getHSL(_hsl);
+  _rim.setHSL(_hsl.h, Math.min(1, _hsl.s * 0.9), _hsl.l * 0.42); // Spaces.jsx: rimColor
+  const flat = g => g.rotateX(-Math.PI / 2).translate(0, PUCK_H, 0);
+  const parts = [
+    paint(new THREE.CylinderGeometry(BOLD_TOP_R, PUCK_R + 0.02, PUCK_H, PUCK_SEGMENTS, 1, true).translate(0, PUCK_H / 2, 0), _rim),
+    paint(flat(new THREE.RingGeometry(BOLD_TOP_R - BOLD_BAND, BOLD_TOP_R, PUCK_SEGMENTS)), _band),
+    paint(flat(new THREE.CircleGeometry(BOLD_TOP_R - BOLD_BAND, PUCK_SEGMENTS)), _brass)
+  ];
+  const g = mergeGeometries(parts);
+  parts.forEach(part => part.dispose());
+  return g;
+}
+
+function Base({ color, bold }) {
+  const env = useEnvironment();
+  const geometry = useMemo(() => (bold ? boldPuckGeometry(color) : puckGeometry(color)), [color, bold]);
+  const material = useMemo(
+    () => new THREE.MeshStandardMaterial({ vertexColors: true, metalness: 0.7, roughness: 0.36, envMap: env, envMapIntensity: 0.9 }),
+    [env]
+  );
+  useEffect(() => () => geometry.dispose(), [geometry]);
+  useEffect(() => () => material.dispose(), [material]);
+  // Too thin to cast a shadow worth a draw; the model above it casts one onto it.
+  return <mesh geometry={geometry} material={material} receiveShadow raycast={noRaycast} />;
+}
+
+// Under the player whose turn it is, in their colour with a brass outer hairline; pulses for two seconds when
+// the turn starts (not with reduced motion).
 function TurnRing({ color }) {
   const ref = useRef();
   const started = useRef(-1);
+  const still = useReducedMotion();
   useFrame((state) => {
+    if (still) return;
     const now = state.clock.elapsedTime;
     if (started.current < 0) started.current = now;
     const t = now - started.current;
@@ -122,16 +172,22 @@ function TurnRing({ color }) {
     if (t < 2.1) state.invalidate();
   });
   return (
-    <mesh ref={ref} rotation-x={-Math.PI / 2} position-y={0.02} raycast={noRaycast} renderOrder={2}>
-      <ringGeometry args={[0.46, 0.58, 48]} />
-      <meshBasicMaterial color={color} toneMapped={false} transparent opacity={0.95} depthWrite={false} />
-    </mesh>
+    <group ref={ref} rotation-x={-Math.PI / 2} position-y={0.02}>
+      <mesh raycast={noRaycast} renderOrder={2}>
+        <ringGeometry args={[RING_IN, RING_OUT, 48]} />
+        <meshBasicMaterial color={color} toneMapped={false} transparent opacity={0.95} depthWrite={false} />
+      </mesh>
+      <mesh raycast={noRaycast} renderOrder={2}>
+        <ringGeometry args={[RING_OUT + 0.012, RING_OUT + 0.012 + HAIRLINE, 48]} />
+        <meshBasicMaterial color={BRASS_LINE} toneMapped={false} transparent opacity={0.95} depthWrite={false} />
+      </mesh>
+    </group>
   );
 }
 
 // ---- token ---------------------------------------------------------------------------------------------
 
-const Token = memo(function Token({ id, index, x, z, yaw, color, url, name, current, snapNonce }) {
+const Token = memo(function Token({ id, index, x, z, yaw, scale, bold, color, url, name, current, snapNonce }) {
   const group = useRef();
   const target = useRef({ x, z, yaw });
   const walk = useRef(null); // { path, i, t, hop, jump, from: Vector3, resolve }
@@ -233,43 +289,49 @@ const Token = memo(function Token({ id, index, x, z, yaw, color, url, name, curr
 
   return (
     <group ref={group}>
-      <ErrorBoundary key={url} label={`token ${url}`} fallback={<Puck color={color} />} clearCache={() => clearTokenModel(url)}>
-        <Suspense fallback={<Puck color={color} />}>
-          <TokenModel url={url} color={color} />
-        </Suspense>
-      </ErrorBoundary>
-      {current && <TurnRing color={color} />}
-      {/* hit proxy: the real meshes never raycast (12k triangles each) */}
-      <mesh
-        position-y={0.4}
-        onPointerOver={(e) => {
-          if (e.pointerType !== 'mouse') return;
-          e.stopPropagation();
-          setHovered(true);
-        }}
-        onPointerOut={() => setHovered(false)}
-        onClick={(e) => {
-          if (e.delta > CLICK_SLOP) return;
-          e.stopPropagation();
-          useGameStore.getState().openProperty?.(index);
-        }}
-      >
-        <cylinderGeometry args={[0.42, 0.42, 0.8, 12]} />
-        <meshBasicMaterial visible={false} />
-      </mesh>
-      {hovered && (
-        <Html position={[0, 1.25, 0]} center pointerEvents="none" zIndexRange={[30, 0]}>
-          <div className={css.label} style={{ borderColor: color }}>{name}</div>
-        </Html>
-      )}
+      <group scale={scale}>
+        <Base color={color} bold={bold} />
+        <ErrorBoundary key={url} label={`token ${url}`} fallback={<Pawn color={color} />} clearCache={() => clearTokenModel(url)}>
+          <Suspense fallback={<Pawn color={color} />}>
+            <TokenModel url={url} color={color} />
+          </Suspense>
+        </ErrorBoundary>
+        {current && <TurnRing color={color} />}
+        {/* hit proxy: the real meshes never raycast (12k triangles each) */}
+        <mesh
+          position-y={0.4}
+          onPointerOver={(e) => {
+            if (e.pointerType !== 'mouse') return;
+            e.stopPropagation();
+            setHovered(true);
+          }}
+          onPointerOut={() => setHovered(false)}
+          onClick={(e) => {
+            if (e.delta > CLICK_SLOP) return;
+            e.stopPropagation();
+            useGameStore.getState().openProperty?.(index);
+          }}
+        >
+          <cylinderGeometry args={[0.42, 0.42, 0.8, 12]} />
+          <meshBasicMaterial visible={false} />
+        </mesh>
+        {hovered && (
+          <Html position={[0, 1.25, 0]} center pointerEvents="none" zIndexRange={[30, 0]}>
+            <div className={css.label} style={{ '--pc': color }}>{name}</div>
+          </Html>
+        )}
+      </group>
     </group>
   );
 });
 
 // ---- layer ---------------------------------------------------------------------------------------------
 
-/** Spots for every player on the board: shared spaces split into a grid, Rikers into cell vs visiting. */
-function placeTokens(players, shown, jailed) {
+/**
+ * Spots for every player on the board: shared spaces split into a grid, Rikers into cell vs visiting. `want` is
+ * the piece scale for the canvas; a crowded spot may give its pieces less.
+ */
+function placeTokens(players, shown, jailed, want) {
   const groups = new Map();
   const list = [];
   for (const p of players) {
@@ -283,18 +345,22 @@ function placeTokens(players, shown, jailed) {
     list.push(entry);
   }
   for (const members of groups.values()) {
+    const { index, inJail } = members[0];
+    const scale = spotScale(index, members.length, inJail, want);
     members.forEach((m, k) => {
-      spotPosition(m.index, k, members.length, m.inJail, _spot);
+      spotPosition(m.index, k, members.length, m.inJail, _spot, scale);
       m.x = _spot.x;
       m.z = _spot.z;
+      m.scale = scale;
     });
   }
-  return list.map(({ player, index, x, z }) => ({
+  return list.map(({ player, index, x, z, scale }) => ({
     id: player.id,
     index,
     x,
     z,
     yaw: restYaw(index),
+    scale,
     color: playerColor(player),
     url: tokenUrl(player.token_type),
     name: player.username
@@ -305,8 +371,9 @@ function Tokens() {
   const players = useGameStore(s => s.players);
   const currentId = useGameStore(s => selectCurrentPlayer(s)?.id ?? null);
   const { shown, jailed, snapNonce } = useBoardAnim(useShallow(s => ({ shown: s.shown, jailed: s.jailed, snapNonce: s.snapNonce })));
-  const placed = useMemo(() => placeTokens(players || [], shown, jailed), [players, shown, jailed]);
-  return placed.map(t => <Token key={t.id} {...t} current={t.id === currentId} snapNonce={snapNonce} />);
+  const want = pieceScaleFor(useThree(s => s.size.width));
+  const placed = useMemo(() => placeTokens(players || [], shown, jailed, want), [players, shown, jailed, want]);
+  return placed.map(t => <Token key={t.id} {...t} bold={want > 1} current={t.id === currentId} snapNonce={snapNonce} />);
 }
 
 export default memo(Tokens);

@@ -1,93 +1,176 @@
+/* Login: the dial as the emblem, the wordmark, a form straight on the room (no card), and a night skyline
+   along the bottom edge, below everything you read. */
+
 .page {
+  position: relative;
   display: flex;
-  align-items: flex-start;
-  justify-content: center;
+  flex-direction: column;
+  align-items: center;
   min-height: 100vh;
   min-height: 100dvh;
-  padding: max(24px, env(safe-area-inset-top)) 16px max(24px, env(safe-area-inset-bottom));
+  padding-top: max(34px, calc(var(--safe-top) + 20px));
+  overflow-x: hidden;
+  background: radial-gradient(ellipse 120% 60% at 50% 100%, var(--table) 0%, var(--room) 60%);
 }
 
-@media (min-height: 640px) {
-  .page {
-    align-items: center;
-  }
-}
-
-.card {
+.column {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
   width: 100%;
-  max-width: 400px;
-  padding: 28px 24px 24px;
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.35);
+  max-width: calc(400px + 2 * var(--space-6));
+  padding: 0 var(--space-6);
 }
 
 .brand {
-  display: grid;
-  justify-items: center;
-  gap: 4px;
-  margin-bottom: 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
   text-align: center;
 }
 
-.title {
-  margin-top: 8px;
-  color: var(--pm-gold);
-  font-size: 2rem;
-  font-weight: 800;
-  letter-spacing: 0.02em;
+.emblem {
+  width: 176px;
+  height: 97px;
+  filter: drop-shadow(0 10px 24px rgba(0, 0, 0, 0.6));
 }
 
-.subtitle {
-  color: var(--pm-text-2);
-  font-size: 0.95rem;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+.wordmark {
+  margin-top: 14px;
 }
 
 .form {
-  display: grid;
-  gap: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-top: 30px;
 }
 
-.passwordRow {
-  position: relative;
+/* One focus ring at a time: the field's ring while you type in it, only the Show button's own inset ring
+   while that has focus (the wrapper's focus-within ring would otherwise draw a second one around it). */
+.secret:focus-within:not(:has(> input:focus)) {
+  box-shadow: inset 0 0 0 1px var(--seam-strong);
+  outline: none;
 }
 
-.passwordRow input {
-  padding-right: 4.75rem;
+.error {
+  margin-top: -2px;
 }
 
-.passwordRow .reveal {
-  position: absolute;
-  top: 50%;
-  right: 4px;
-  transform: translateY(-50%);
+.error > :global(.ui-icon) {
+  margin-top: 1px;
 }
 
-.passwordRow .reveal:hover,
-.passwordRow .reveal:active {
-  transform: translateY(-50%);
+.submit {
+  margin-top: 6px;
 }
 
-.divider {
+/* "or" between two hairlines */
+.or {
   display: flex;
   align-items: center;
   gap: 12px;
-  margin: 20px 0;
-  color: var(--pm-muted);
-  font-size: 0.85rem;
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
+  margin: 16px 0;
+  font: 500 var(--fs-meta) / 1 var(--font-text);
+  color: var(--slate);
 }
 
-.divider::before,
-.divider::after {
+.or::before,
+.or::after {
   content: '';
   flex: 1;
   height: 1px;
-  background: var(--pm-border);
+  background: var(--seam);
+}
+
+.spectate {
+  background: rgba(23, 35, 56, 0.85); /* --raised, a touch see-through over the room's glow */
+}
+
+.spectate > :global(.ui-icon) {
+  color: var(--limestone);
 }
 
 .footnote {
-  margin-top: 12px;
+  margin-top: 14px;
   text-align: center;
+}
+
+/* ---- skyline (Skyline.jsx) -------------------------------------------------------------------------- */
+
+/* It takes whatever height is left under the form (scaling down, never cropping the spires), so nothing
+   you read ever sits on it. */
+.sky {
+  display: block;
+  flex: 1 0 110px;
+  width: 100%;
+  max-width: none;
+  max-height: 220px;
+  margin-top: 16px;
+  opacity: 0.75;
+  pointer-events: none;
+}
+
+.skyMass {
+  fill: var(--raised);
+}
+
+.skyArch {
+  fill: none;
+  stroke: var(--brass-400);
+  stroke-width: 1;
+  opacity: 0.5;
+}
+
+.skyLit {
+  fill: var(--brass-300);
+}
+
+/* Short phones (375 x 667): a smaller emblem and wordmark keep the whole form on one screen. */
+@media (max-height: 740px) {
+  .page {
+    padding-top: max(20px, calc(var(--safe-top) + 12px));
+  }
+
+  .emblem {
+    width: 136px;
+    height: 75px;
+  }
+
+  .wordmark {
+    margin-top: 10px;
+  }
+
+  .wordmark :global(.ui-wordmark__name) {
+    font-size: 50px;
+  }
+
+  .wordmark:global(.ui-wordmark) {
+    gap: 10px;
+  }
+
+  .form {
+    gap: 12px;
+    margin-top: 22px;
+  }
+
+  .or {
+    margin: 12px 0;
+  }
+
+  .footnote {
+    margin-top: 10px;
+  }
+
+  .sky {
+    flex-basis: 76px;
+    margin-top: 12px;
+  }
+}
+
+@media (min-width: 900px) {
+  .page {
+    padding-top: max(64px, 8vh);
+  }
 }

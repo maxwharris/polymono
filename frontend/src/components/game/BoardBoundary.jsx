@@ -31,24 +31,28 @@ export default class BoardBoundary extends Component {
     if (isChunkLoadError(this.state.error)) {
       return (
         <div className="board-fallback" role="alert">
-          <p>The game was updated since this page loaded.</p>
-          <p className="board-fallback-sub">Reload to get the new version. You can still play from the panel below.</p>
-          <button type="button" className="g-btn g-btn--primary" onClick={() => window.location.reload()}>
-            Reload
-          </button>
-          <button type="button" className="g-btn g-btn--ghost" onClick={this.retry}>
-            Try again
-          </button>
+          <p className="board-fallback__title">The game was updated since this page loaded.</p>
+          <p className="board-fallback__sub">Reload to get the new version. You can still play from the panel below.</p>
+          <div className="board-fallback__acts">
+            <button type="button" className="ui-btn ui-btn--primary" onClick={() => window.location.reload()}>
+              Reload
+            </button>
+            <button type="button" className="ui-btn ui-btn--ghost" onClick={this.retry}>
+              Try again
+            </button>
+          </div>
         </div>
       );
     }
     return (
       <div className="board-fallback" role="alert">
-        <p>The 3D board could not load on this device.</p>
-        <p className="board-fallback-sub">You can still play from the panel below.</p>
-        <button type="button" className="g-btn g-btn--secondary" onClick={this.retry}>
-          Try again
-        </button>
+        <p className="board-fallback__title">The 3D board could not load on this device.</p>
+        <p className="board-fallback__sub">You can still play from the panel below.</p>
+        <div className="board-fallback__acts">
+          <button type="button" className="ui-btn ui-btn--secondary" onClick={this.retry}>
+            Try again
+          </button>
+        </div>
       </div>
     );
   }

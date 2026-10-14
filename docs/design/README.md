@@ -10,31 +10,15 @@ display type, Jost for text, a brass Art Deco elevator dial as the turn indicato
 - `shots/`: the mockup frames (a: buy on phone, b: watching with a toast, c: property card, d: trade, e: login,
   f: lobby, g: desktop, h: turn-panel phases, system: the token sheet).
 
-## Status (branch `redesign`)
+## Status
 
-Done: the foundation (`frontend/src/components/ui/`, see its README): tokens in `index.css` with temporary aliases for
-the old names, fonts, player and group colours, 58 drawn icons, `Medallion` with glyphs traced from the 3D token
-models, `TurnDial`, `Wordmark`, `ui-*` classes, and a dev-only `/specimen` page. Lint and build are clean; the old
-screens render on the new tokens.
+Shipped on 2026-10-14: the foundation (`frontend/src/components/ui/`, see its README), the game screen, Login, Lobby,
+Admin, Chat, Trade and the 3D board staging, with the verdict's grafts and must-fix items, then a design-QA pass and
+its fixes. Verified with real two-player games through the UI at 1440x900 and 390x844 (rolls, purchases, doubles,
+card moves, trades with a counter-offer, building, mortgaging, debt and the bankruptcy confirm).
 
-Next, in this order:
-
-1. Build the screens on the foundation, in three parallel parts with no shared files:
-   - Game screen: `Game.jsx`, `components/game/*`, `lib/presenter.js`, `lib/events.js` (drawn icons per event),
-     the store. Includes: every turn-panel phase with the verdict's headline and debt-copy fixes; "You're up after
-     <name>"; the colour-group strip map with owners in the buy prompt; deed craft (index tab, tear-off owner stub,
-     signature); buy stamp motion; joined set bars; card modal; past games on the results screen; a Turn alerts
-     setting in the user menu (`/api/auth/alerts`, see backend/API.md); "don't spoil the roll" (hold the result,
-     toasts and feed lines until the board's animation finishes); no End turn UI (turns end on their own).
-   - Screens: Login, Lobby (past games from `/api/game/history`, host line), Admin, Chat, Trade (phone layout stacks
-     give/get, paper offer slip, ±$50 stepper).
-   - Board staging: navy table with a baked lamp texture, lacquer slab with a brass inlay ring, new lights, brass
-     pucks and owner discs, lifted group colours.
-   The workflow that does this is saved as `polymono-work/redesign-build-workflow.js` (its foundation phase is done;
-   run the Build and Review phases).
-2. Design QA against the mockups at 390x844, 375x667 and 1440x900, then fixes.
-3. Remove the temporary token aliases once nothing uses them; remove `tokenEmoji`.
-4. `npm test` in backend, the browser playthroughs, merge to main, `deployp`.
+Known gaps: swipe-down to close sheets is not built (close, scrim tap and Esc work); the mockup's "last seen 3h ago"
+presence text needs data the client doesn't have.
 
 Working material outside the repo: `~/Desktop/dev-personal/polymono-work/` (the three directions' mockups and
 shots, the judge results, review reports, the foundation report, browser playthrough scripts and the board harness).

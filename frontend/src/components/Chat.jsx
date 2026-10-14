@@ -2,17 +2,22 @@ import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 're
 import { useShallow } from 'zustand/react/shallow';
 import useGameStore from '../store/gameStore';
 import { playerColor } from '../lib/colors';
+import Icon from './ui/Icon';
+import Medallion from './ui/Medallion';
 import { clockTime, dayKey, dayLabel, isoString, toDate } from './screens/time';
 import ui from './screens/ui.module.css';
 import s from './screens/Chat.module.css';
 
 const MAX_LENGTH = 500;
+const COUNT_FROM = 400; // the character count shows once a message gets long
 const GROUP_GAP_MS = 5 * 60 * 1000; // consecutive messages from one person within 5 minutes share a header
 const NEAR_BOTTOM_PX = 48;
 
 /**
  * The game chat as a docked panel: it fills whatever box the parent gives it and positions nothing
  * itself. Pass `title` to show a small header; by default the parent's tab or heading names it.
+ * Messages from others sit on raised bubbles beside the sender's medallion; your own are brass-tinted on
+ * the right. Emoji typed into chat stay as typed.
  */
 export default function Chat({ title, className = '' }) {
   const { messages, players, userId, isSpectator, sendChat, fetchChat } = useGameStore(useShallow(state => ({
@@ -100,7 +105,7 @@ export default function Chat({ title, className = '' }) {
   }
 
   const unseen = !atBottom && list.length > seenCount;
-  const remaining = MAX_LENGTH - draft.length;
+  const showCount = draft.length >= COUNT_FROM;
 
   // Day dividers and grouped headers.
   const rows = [];
@@ -129,32 +134,45 @@ export default function Chat({ title, className = '' }) {
       <div className={s.listWrap}>
         <div ref={listRef} className={s.list} onScroll={handleScroll} role="log" aria-label="Chat messages" tabIndex={0}>
           {rows.length === 0 ? (
-            <p className={s.empty}>{isSpectator ? 'No messages yet.' : 'No messages yet. Say hello.'}</p>
+            <div className={s.empty}>
+              <Icon name="chat" size={28} />
+              <p>{isSpectator ? 'No messages yet.' : 'No messages yet. Say hello.'}</p>
+            </div>
           ) : (
             <ol className={s.messages}>
               {rows.map(row => {
                 if (row.kind === 'day') {
                   return (
-                    <li key={row.key} className={s.day}>
+                    <li key={row.key} className={`ui-divider ui-divider--label ${s.day}`}>
                       <span>{row.label}</span>
                     </li>
                   );
                 }
                 const { msg, when, grouped } = row;
                 const mine = msg.user_id === userId;
+                const player = playersByUser.get(msg.user_id);
+                const time = when && <time className={s.time} dateTime={isoString(when)}>{clockTime(when)}</time>;
                 return (
                   <li key={row.key} className={`${s.message} ${grouped ? s.grouped : ''} ${mine ? s.mine : ''}`}>
-                    {grouped ? (
-                      <span className={ui.srOnly}>{msg.username}: </span>
-                    ) : (
-                      <p className={s.meta}>
-                        <span className={s.author} style={{ color: playerColor(playersByUser.get(msg.user_id)) }}>
-                          {msg.username}
-                        </span>
-                        {when && <time className={s.time} dateTime={isoString(when)}>{clockTime(when)}</time>}
-                      </p>
+                    {!mine && (
+                      <span className={s.avatar}>
+                        {!grouped && (player
+                          ? <Medallion player={player} size={30} />
+                          : <Medallion icon="user" size={30} />)}
+                      </span>
                     )}
-                    <p className={s.text}>{msg.message}</p>
+                    <div className={s.bubble}>
+                      {grouped || mine ? (
+                        <span className="sr-only">{mine ? 'You' : msg.username}: </span>
+                      ) : (
+                        <p className={s.meta}>
+                          <span className={s.author} style={{ '--pc': playerColor(player) }}>{msg.username}</span>
+                          {time}
+                        </p>
+                      )}
+                      <p className={s.text}>{msg.message}</p>
+                      {mine && !grouped && <p className={s.mineTime}>{time}</p>}
+                    </div>
                   </li>
                 );
               })}
@@ -162,22 +180,25 @@ export default function Chat({ title, className = '' }) {
           )}
         </div>
         {unseen && (
-          <button type="button" className={`${ui.btn} ${ui.primary} ${ui.small} ${s.jump}`} onClick={jumpToBottom}>
-            New messages ↓
+          <button type="button" className={`ui-btn ui-btn--sm ${s.jump}`} onClick={jumpToBottom}>
+            New messages
+            <Icon name="chevron" size={18} />
           </button>
         )}
       </div>
 
       {isSpectator ? (
-        <p className={s.spectator}>Spectators can read the chat.</p>
+        <p className={s.spectator}>
+          <Icon name="eye" size={18} />
+          Spectators can read the chat.
+        </p>
       ) : (
         <form className={s.form} onSubmit={handleSubmit}>
-          <label className={ui.srOnly} htmlFor={`${id}-input`}>Message</label>
-          <div className={s.inputRow}>
+          <label className="sr-only" htmlFor={`${id}-input`}>Message</label>
+          <div className={`ui-input ${s.field}`}>
             <input
               ref={inputRef}
               id={`${id}-input`}
-              className={`${ui.input} ${s.input}`}
               type="text"
               value={draft}
               onChange={e => {
@@ -191,16 +212,21 @@ export default function Chat({ title, className = '' }) {
               aria-invalid={error ? 'true' : undefined}
               aria-describedby={`${id}-count${error ? ` ${id}-error` : ''}`}
             />
-            <button type="submit" className={`${ui.btn} ${ui.primary}`} disabled={!draft.trim() || sending}>
+            <button type="submit" className={`ui-input__act ${s.send}`} disabled={!draft.trim() || sending}>
               {sending ? 'Sending…' : 'Send'}
             </button>
           </div>
-          <div className={s.formMeta}>
-            {error ? <p id={`${id}-error`} className={ui.errorText} role="alert">{error}</p> : <span />}
-            <span id={`${id}-count`} className={`${s.counter} ${remaining <= 50 ? s.counterWarn : ''}`}>
-              <span className={ui.srOnly}>Characters used: </span>{draft.length}/{MAX_LENGTH}
-            </span>
-          </div>
+          {(error || showCount) && (
+            <div className={s.formMeta}>
+              {error ? <p id={`${id}-error`} className="ui-error" role="alert">{error}</p> : <span />}
+              {showCount && (
+                <span className={`${s.counter} ${MAX_LENGTH - draft.length <= 50 ? s.counterWarn : ''}`} aria-hidden="true">
+                  {draft.length}/{MAX_LENGTH}
+                </span>
+              )}
+            </div>
+          )}
+          <span id={`${id}-count`} className="sr-only">{draft.length} of {MAX_LENGTH} characters</span>
         </form>
       )}
     </section>

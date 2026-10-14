@@ -16,7 +16,7 @@ function Floaters() {
     return (
       <Html key={f.id} position={[space.x, 1.2, space.z]} center pointerEvents="none" zIndexRange={[25, 0]}>
         <div className={`${css.floater} ${gain ? css.gain : css.loss}`}>
-          {gain ? '+' : '−'}${Math.abs(f.amount).toLocaleString()}
+          {gain ? '+' : '−'}${Math.abs(f.amount).toLocaleString('en-US')}
           {LABELS[f.label] && <span>{LABELS[f.label]}</span>}
         </div>
       </Html>
