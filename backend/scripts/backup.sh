@@ -10,6 +10,8 @@
 #   NTFY_TOPIC=<topic>
 #   30 4 * * * ubuntu /var/www/polymono/backend/scripts/backup.sh 2>&1 | logger -t polymono-backup
 # NTFY_TOPIC is optional: when set, a failed nightly backup posts a short alert to https://ntfy.sh/<topic>.
+# BACKUP_S3_URI (in backend/.env, e.g. s3://bucket/polymono) is optional: each dump is also copied there with the
+# AWS CLI, using the box's instance role (upload-only; the bucket deletes copies after 90 days).
 
 set -euo pipefail
 umask 077
@@ -54,6 +56,19 @@ pg_dump --format=custom --dbname="$DB_NAME" --file="$FILE.partial" || fail "pg_d
 pg_restore --list "$FILE.partial" >/dev/null || fail "the dump does not read back"
 mv "$FILE.partial" "$FILE"
 echo "backup: $FILE ($(du -h "$FILE" | cut -f1))"
+
+# Offsite copy. A failed upload fails (and alerts) the nightly run; before a deploy it only warns.
+S3_URI=$(envval BACKUP_S3_URI)
+if [ -n "$S3_URI" ]; then
+  AWS=$(command -v aws || echo /snap/bin/aws)
+  if "$AWS" s3 cp "$FILE" "${S3_URI%/}/$(basename "$FILE")" --only-show-errors; then
+    echo "backup: copied to ${S3_URI%/}/"
+  elif [ "$MODE" = nightly ]; then
+    fail "the offsite copy to $S3_URI failed"
+  else
+    echo "backup: WARNING the offsite copy to $S3_URI failed" >&2
+  fi
+fi
 
 if [ "$MODE" = nightly ]; then
   find "$DIR" -maxdepth 1 -name 'nightly-*.dump' -mtime +13 -delete
